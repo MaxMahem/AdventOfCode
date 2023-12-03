@@ -6,12 +6,13 @@ using System;
 public class Day01 : AdventBase
 {
     protected override object InternalPart1() {
-        var enumerator = Input.Text.GetEnumerator();
+        // var enumerator = Input.Text.GetEnumerator();
         int sum = 0;
         int resultDigit;
+        int index = -1;
 
         do {
-            int firstDigit = GetNextDigit(enumerator);
+            int firstDigit = GetNextDigit(Input.Text, ref index);
 
             // AoC code does not appear to have any cases with *no* digits in a line, but handle that anyways.
             if (firstDigit == 0) continue;
@@ -20,34 +21,36 @@ public class Day01 : AdventBase
             int secondDigit = firstDigit;
 
             // step through all remaining digits until end of line
-            while ((resultDigit = GetNextDigit(enumerator)) != 0) {
+            while ((resultDigit = GetNextDigit(Input.Text, ref index)) != 0) {
                 // if a new digit is found, it becomes the second digit, otherwise we keep the old one.
                 secondDigit = resultDigit != 0 ? resultDigit : secondDigit;
             }
 
             sum += firstDigit * 10 + secondDigit;
-        } while (enumerator.MoveNext());
+        } while (++index < Input.Text.Length);
         return sum;
+    }
 
-        // Gets the Next Digit, or 0 if EoL.
-        static int GetNextDigit(CharEnumerator charEnumerator) {
-            while (charEnumerator.MoveNext() && charEnumerator.Current != '\r') {
-                if (char.IsAsciiDigit(charEnumerator.Current)) return charEnumerator.Current - '0';
-            }
-            return 0;
+    // Gets the Next Digit, or 0 if EoL.
+    static int GetNextDigit(string text, ref int index) {
+        char c;
+        while ((++index < text.Length) && (c = text[index]) != '\r') {
+            if (char.IsAsciiDigit(c)) return c - '0';
         }
+        return 0;
     }
 
     protected override object InternalPart2() {
-        var enumerator = Input.Text.GetEnumerator();
+        // var enumerator = Input.Text.GetEnumerator();
 
         // wordsMatchedLetters keeps track of how many matching letters have been seen in every word
         Span<int> wordsMatchedLetters = stackalloc int[WordNumbers.Length];
         int sum = 0;
         int resultDigit;
+        int index = -1;
 
         do {
-            int firstDigit = GetNextDigit(enumerator, wordsMatchedLetters);
+            int firstDigit = GetNextDigit(Input.Text, ref index, wordsMatchedLetters);
 
             // AoC code does not appear to have any cases with *no* digits in a line, but handle that anyways.
             if (firstDigit == 0) continue;
@@ -56,25 +59,25 @@ public class Day01 : AdventBase
             int secondDigit = firstDigit;
 
             // step through all remaining digits until end of line
-            while ((resultDigit = GetNextDigit(enumerator, wordsMatchedLetters)) != 0) {
+            while ((resultDigit = GetNextDigit(Input.Text, ref index, wordsMatchedLetters)) != 0) {
                 // if a digit is found, update the second digit. If no digit found, keep the same digit.
                 secondDigit = resultDigit != 0 ? resultDigit : secondDigit;
             }
 
             sum += firstDigit * 10 + secondDigit;
-        } while (enumerator.MoveNext());
+        } while (++index < Input.Text.Length);
 
         return sum;
     }
 
     // Gets the Next Digit, or 0 if EoL.
-    private static int GetNextDigit(CharEnumerator charEnumerator, Span<int> wordsMatchedLetters) {
+    private static int GetNextDigit(string text, ref int index, Span<int> wordsMatchedLetters) {
         var resultDigit = 0;
 
-        while (resultDigit == 0 && charEnumerator.MoveNext()) {
-            char character = charEnumerator.Current;
+        while (resultDigit == 0 && ++index < text.Length) {
+            char character = text[index];
 
-            if (char.IsAsciiDigit(character)) return charEnumerator.Current - '0';
+            if (char.IsAsciiDigit(character)) return character - '0';
             if (character == '\r') return 0;
 
             // letter case. Itterate through all words in our map.
