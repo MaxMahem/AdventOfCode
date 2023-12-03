@@ -1,4 +1,4 @@
-﻿namespace AdventOfCode.IEnumerableHelpers;
+﻿namespace AdventOfCode.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;

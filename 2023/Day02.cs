@@ -7,21 +7,20 @@ using Sprache;
 
 using AdventOfCodeSupport;
 
-using AdventOfCode.IEnumerableHelpers;
-
 
 using BoxSet = IReadOnlyDictionary<BoxColor, int>;
+using AdventOfCode.Helpers;
 
 public class Day02 : AdventBase
 {
     IEnumerable<Game>? _games;
 
     protected override void InternalOnLoad() {
-        _games = GameParser.GameSet.Parse(Input.Text);
+        _games = GameParser.GameFile.Parse(Input.Text);
     }
 
     protected override object InternalPart1() => 
-        _games!.Select(game => game.Validate(maxRed: MAX_RED, maxGreen: MAX_GREEN, maxBlue: MAX_BLUE) ? game.Id : 0).Sum();
+        _games!.Select(game => game.ValidateSetMaximums(maxRed: MAX_RED, maxGreen: MAX_GREEN, maxBlue: MAX_BLUE) ? game.Id : 0).Sum();
 
     protected override object InternalPart2() =>
         _games!.Select(game => game.GetMinPossibleSet().Values.Product()).Sum();
@@ -32,8 +31,8 @@ public class Day02 : AdventBase
 }
 
 public readonly record struct Game(int Id, IEnumerable<BoxSet> Rounds) {
-    public readonly bool Validate(int maxRed, int maxGreen, int maxBlue) => 
-        Rounds.All(round => round.Validate(maxRed, maxGreen, maxBlue));
+    public readonly bool ValidateSetMaximums(int maxRed, int maxGreen, int maxBlue) => 
+        Rounds.All(round => round.ValidateMaxiums(maxRed, maxGreen, maxBlue));
 
     public readonly BoxSet GetMinPossibleSet() {
         (int minRed, int minBlue, int minGreen) = (0, 0, 0);
@@ -50,7 +49,7 @@ public readonly record struct Game(int Id, IEnumerable<BoxSet> Rounds) {
 }
 
 public static class BoxSetExtensions {
-    public static bool Validate(this BoxSet boxSet, int maxRed, int maxGreen, int maxBlue) {
+    public static bool ValidateMaxiums(this BoxSet boxSet, int maxRed, int maxGreen, int maxBlue) {
         (int red, int green, int blue) = boxSet;
         return red <= maxRed && green <= maxGreen && blue <= maxBlue;
     }
@@ -67,32 +66,34 @@ internal static class GameParser
 {
     static readonly Parser<char> BoxSeparator = Parse.Char(',');
     static readonly Parser<char> SetSeparator = Parse.Char(';');
+    static readonly Parser<char> IdSeperator = Parse.Char(':');
     static readonly Parser<int> NumberParser = Parse.Number.Select(int.Parse);
-    public readonly static Parser<BoxColor> ColorParser 
+    
+    public static readonly Parser<BoxColor> Color
         = Parse.Letter.AtLeastOnce().Text().Select(GetBoxColor);
     
-    public readonly static Parser<int> GameId = 
+    public static readonly Parser<int> GameId = 
         from identifier in Parse.String("Game").Token()
         from id in NumberParser
         select id;
 
-    public readonly static Parser<KeyValuePair<BoxColor, int>> BoxCount =
+    public static readonly Parser<KeyValuePair<BoxColor, int>> BoxCount =
         from count in NumberParser.Token()
-        from color in ColorParser.Token()
+        from color in Color.Token()
         select new KeyValuePair<BoxColor, int>(color, count);
 
-    public readonly static Parser<IReadOnlyDictionary<BoxColor, int>> BoxSets =
+    public static readonly Parser<BoxSet> BoxSets =
         from boxSets in BoxCount.DelimitedBy(BoxSeparator.Token())
         select boxSets.ToImmutableDictionary();
 
-    public static Parser<Game> Game =
+    public static readonly Parser<Game> Game =
         from id in GameId
-        from colon in Parse.String(":").Token()
+        from colon in IdSeperator.Token()
         from sets in BoxSets.DelimitedBy(SetSeparator)
         from eol in Parse.LineEnd.Optional()
         select new Game(id, sets);
 
-    public static Parser<IEnumerable<Game>> GameSet =
+    public static readonly Parser<IEnumerable<Game>> GameFile =
         from games in Game.XMany().End()
         select games;
 
