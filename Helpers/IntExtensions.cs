@@ -2,7 +2,7 @@
 
 public static partial class IntExtensions
 {
-public static int DigitCount(this int number) => number switch {
+public static int Digits(this int number) => number switch {
         < 10         and > -10         => 1,
         < 100        and > -100        => 2,
         < 1000       and > -1000       => 3,
