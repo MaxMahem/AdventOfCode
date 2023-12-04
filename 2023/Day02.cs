@@ -7,7 +7,6 @@ using Sprache;
 
 using AdventOfCodeSupport;
 
-
 using BoxSet = IReadOnlyDictionary<BoxColor, int>;
 using AdventOfCode.Helpers;
 
