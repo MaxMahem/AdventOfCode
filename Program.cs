@@ -1,6 +1,6 @@
 ﻿using AdventOfCodeSupport;
 
-string testData =
+string testData1 =
 @"467..114..
 ...*......
 ..35..633.
@@ -12,21 +12,13 @@ string testData =
 ...$.*....
 .664.598..";
 
-string testData2 =
-@"
-.65...261..
-....*......
-.....453...";
-
-
-
 var solutions = new AdventSolutions();
 var today = solutions.GetDay(2023, 3);
 
 // Console.WriteLine("TestData P1 = 467835");
-//today.SetTestInput(testData2);
+// today.SetTestInput(testData1);
 
  await today.Part1().CheckPart1Async();
  await today.Part2().CheckPart2Async();
 
-// today.Benchmark();
+today.Benchmark();

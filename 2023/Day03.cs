@@ -1,212 +1,139 @@
 ﻿namespace AdventOfCode._2023;
 
-using AdventOfCode.Helpers;
-using AdventOfCodeSupport;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Drawing;
+
+using AdventOfCode.Helpers;
+using AdventOfCodeSupport;
 
 public class Day03 : AdventBase
 {
-    Grid? _grid;
+    Schematic? _schematic;
 
     protected override void InternalOnLoad() {
+        _schematic = Schematic.ParsePlan(Input.Text);
+    }
+
+    protected override object InternalPart1() =>
+        _schematic!.Parts.OfType<PartNumber>()
+                         .Where(pn => _schematic.GetNeighbors(pn).Any())
+                         .Select(pn => pn.Number).Sum();
+
+    protected override object InternalPart2() =>
+        _schematic!.Parts.OfType<PartSymbol>().Where(ps => ps.Symbol is '*')
+                         .Select(ps => _schematic!.GetNeighbors(ps).OfType<PartNumber>().Take(3))
+                         .Where(e => e.Count() is 2).Select(e => e.Select(pn => pn.Number).Product()).Sum();
+}
+
+public record PartNumber(int Number,  Point Location, Guid Guid) : IPart {
+    public PartNumber(int number, Point location) : this(number, location, Guid.NewGuid()) { }
+    public int Length => Number.Digits();
+}
+public record PartSymbol(char Symbol, Point Location, Guid Guid) : IPart {
+    public PartSymbol(char symbol, Point location) : this(symbol, location, Guid.NewGuid()) { }
+    public int Length => 1;
+}
+
+
+public interface IPart {
+    Point Location { get; }
+    int Length { get; }
+    Guid Guid { get; }
+}
+
+public class Schematic
+{
+    public int Width { get; }
+    public int Height { get; }
+    public IReadOnlyDictionary<Point, IPart> PartLocations { get; }
+    public IEnumerable<IPart> Parts { get; }
+
+    public Schematic(int width, int height, IEnumerable<IPart> parts) {
+        this.Width  = width  > 0 ? width  : throw new ArgumentException("Must be greater than 0.", nameof(width));
+        this.Height = height > 0 ? height : throw new ArgumentException("Must be greater than 0.", nameof(height));
+        ArgumentNullException.ThrowIfNull(nameof(parts));
+        this.Parts = parts.ToImmutableArray();
+        this.PartLocations = ParsePartList(parts).ToImmutableDictionary();
+    }
+
+    public static Schematic ParsePlan(string input) {
+        var text = input.AsSpan();
+        List<IPart> parts = [];
+
         int y = 0;
-        Dictionary<(int X, int Y), char> symbols = [];
-        Dictionary<(int X, int Y), int> numbers  = [];
-
-        foreach (var line in Input.Text.AsSpan().EnumerateLines()) {
+        foreach (var line in text.EnumerateLines()) {
             for (int index = 0; index < line.Length; index++) {
-                
-
                 var window = line[index..];
-                int hitIndex = line[index..].IndexOfAnyExcept('.');
-                if (hitIndex == -1) continue;
 
+                // find the first non '.'
+                int hitIndex = line[index..].IndexOfAnyExcept('.');
+                if (hitIndex is -1) break; // EoL.
+
+                // handle symbols.
                 char c;
-                (int X, int Y) point = (index + hitIndex, y);
+                Point location = new(index + hitIndex, y);
                 if (!char.IsDigit(c = window[hitIndex])) {
-                    symbols.Add(point, c);
-                    
-                    index += hitIndex; // advance our window to 1the hit position.
+                    parts.Add(new PartSymbol(c, location));
+
+                    index += hitIndex; // advance the for loop and window.
                     continue;
                 }
 
-                int number = 0;
-                int digitLength = 0;
+                // handle digits.
+                int number = 0, digitLength = 0;
                 while ((hitIndex + digitLength) < window.Length && char.IsAsciiDigit(c = window[hitIndex + digitLength])) {
                     number = number * 10 + (c - '0');
                     digitLength++;
                 }
-
-                numbers.Add(point, number);
-
-                // advance our window to one past the last digit.
-                index += hitIndex + digitLength - 1;
+                parts.Add(new PartNumber(number, location));
+                index += hitIndex + digitLength - 1; // advance the for loop and window.
             }
             y++;
         }
-        _grid = new Grid(symbols, numbers);
+        int width = text.IndexOf('\n');
+        return new Schematic(width, y, parts);
     }
 
-    protected override object InternalPart1() {
-        int sum = 0;
-        foreach(var kvpNumber in _grid!.Numbers) {
-            if (_grid.GetNeighbors(kvpNumber.Key, kvpNumber.Value).Any()) {
-                sum += kvpNumber.Value;
+    public static IDictionary<Point, IPart> ParsePartList(IEnumerable<IPart> parts) {
+        ArgumentNullException.ThrowIfNull(nameof(parts));
+
+        Dictionary<Point, IPart> partDictionary = [];
+
+        foreach (IPart part in parts) {
+            // get the last location a part is inserted at. For a symbol, this is the first location.
+            // for a part number it depends on the number of digits.
+            int endX = part.Location.X + part switch {
+                PartNumber partNumber => partNumber.Number.Digits(),
+                PartSymbol            => 1,
+                _ => throw new ArgumentException("Undefined part found.", nameof(parts))
+            };
+
+            for (int x = part.Location.X; x < endX; x++) {
+                partDictionary.Add(new Point(x, part.Location.Y), part);
             }
         }
-        return sum;
+        return partDictionary;
     }
 
-    protected override object InternalPart2() {
-        int sum = 0;
-        List<object> neigh = [];
-        var stars = _grid!.Symbols.Where(kvp => kvp.Value == '*').ToArray();
-        foreach(var kvpSymbol in _grid!.Symbols.Where(kvp => kvp.Value == '*')) {
-            int[] neighbors = _grid.GetNeighbors(kvpSymbol.Key).Take(3).ToArray();
-            neigh.Add(neighbors);
-            if (neighbors.Length == 2) {
-                // Console.WriteLine($"{kvpSymbol.Key, -10} :  {string.Join(' ', neighbors), -10} = {neighbors.Product()}");
-                sum += neighbors.Product();
-            }
-        }
-        return sum;
-    }
-}
-
-
-public class Grid(IDictionary<(int X, int Y), char> symbols, IDictionary<(int X, int Y), int> numbers)
-{
-    public IReadOnlyDictionary<(int X, int Y), char> Symbols { get; } = symbols.ToImmutableDictionary();
-    public IReadOnlyDictionary<(int X, int Y), int> Numbers { get; } = numbers.ToImmutableDictionary();
-
-    public IEnumerable<char> GetNeighbors((int X, int Y) point, int number) {
+    public IEnumerable<IPart> GetNeighbors(IPart part) {
         // search box
-        (int X, int Y) tl = (point.X - 1,                   point.Y - 1);
-        (int X, int Y) br = (point.X + number.Digits(), point.Y + 1);
-        char symbol;
+        (Point point, int length) = (part.Location, part.Length);
+        (int X, int Y) tl = (point.X - 1,      point.Y - 1);
+        (int X, int Y) br = (point.X + length, point.Y + 1);
+        IPart? neighbor;
+
+        HashSet<IPart> seenParts = [];
 
         // top and bottom row. 
         for (int x = tl.X; x <= br.X; x++) {
-            if (Symbols.TryGetValue((x, tl.Y), out symbol)) yield return symbol;
-            if (Symbols.TryGetValue((x, br.Y), out symbol)) yield return symbol;
+            if (PartLocations.TryGetValue(new(x, tl.Y), out neighbor) && seenParts.Add(neighbor)) yield return neighbor;
+            if (PartLocations.TryGetValue(new(x, br.Y), out neighbor) && seenParts.Add(neighbor)) yield return neighbor;
         }
 
-        // middle right.
-        if (Symbols.TryGetValue((tl.X, point.Y), out symbol)) yield return symbol;
-        if (Symbols.TryGetValue((br.X, point.Y), out symbol)) yield return symbol;
-    }
-
-    public IEnumerable<int> GetNeighbors((int X, int Y) point) {
-        // search box
-        (int X, int Y) tl = (point.X - 1, point.Y - 1);
-        (int X, int Y) br = (point.X + 1, point.Y + 1);
-        int number;
-
-        // top and bottom row. X offset by 1 because left side is handled below.
-        for (int x = tl.X + 1; x <= br.X; x++) {
-            if (Numbers.TryGetValue((x, tl.Y), out number)) yield return number;
-            if (Numbers.TryGetValue((x, br.Y), out number)) yield return number;
-        }
-
-        // middle right.
-        if (Numbers.TryGetValue((br.X, point.Y), out number)) yield return number;
-
-        // left side takes special handling. Search the left edge 3 places out for a number (up to 3 digits long)
-        // if a number is found, yield and break, do no more searches on that row.
-        for (int x = tl.X; x >= tl.X - 2; x--) { 
-            if (Numbers.TryGetValue((x, tl.Y),    out number) && x + number.Digits() > tl.X) {
-                yield return number; break; 
-            }
-        }
-        for (int x = tl.X; x >= tl.X - 2; x--) {
-            if (Numbers.TryGetValue((x, point.Y), out number) && x + number.Digits() > tl.X) { 
-                yield return number; break; 
-            }
-        }
-        for (int x = tl.X; x >= tl.X - 2; x--) { 
-            if (Numbers.TryGetValue((x, br.Y),    out number) && x + number.Digits() > tl.X) { 
-                yield return number; break; 
-            }
-        }
-    }
-}
-
-public readonly ref struct ReadOnlySpanTextGrid {
-    public readonly int Width;
-    public readonly int Height;
-    public readonly ReadOnlySpan<char> Text;
-
-    private readonly int _terminatorLength;
-    private readonly int _rawWidth;
-
-    public ReadOnlySpanTextGrid(ReadOnlySpan<char> text, string terminator) {
-        if (terminator.Length == 0) throw new ArgumentException("Cannot be empty.", nameof(terminator));
-
-        Text = text;
-        _terminatorLength = terminator.Length;
-
-        Width  = Text.IndexOf(terminator[0]) - _terminatorLength + 1;
-        Height = Text.Length / (Width + _terminatorLength);
-        _rawWidth = Width + _terminatorLength + 1;
-    }
-
-    public char GetCharacter(int x, int y) {
-        if (x < 0 || x >= Width)  throw new ArgumentOutOfRangeException(nameof(x), x, "Value beyond grid boundaries.");
-        if (y < 0 || y >= Height) throw new ArgumentOutOfRangeException(nameof(y), y, "Value beyond grid boundaries.");
-
-        int index = y * _rawWidth + x;
-
-        return Text[index]; // 6, 3 # (42)
-    }
-}
-
-public class Grid2(IDictionary<(int X, int Y), char> symbols, List<SortedList<int, int>> numbers)
-{
-    public IReadOnlyDictionary<(int X, int Y), char> Symbols { get; } = symbols.ToImmutableDictionary();
-    public IReadOnlyList<SortedList<int, int>> Numbers { get; } = numbers.ToImmutableArray();
-
-    public IEnumerable<char> GetNeighbors((int X, int Y) point, int number) {
-        // search box
-        (int X, int Y) tl = (point.X - 1, point.Y - 1);
-        (int X, int Y) br = (point.X + number.Digits(), point.Y + 1);
-        char symbol;
-
-        // top and bottom row. 
-        for (int x = tl.X; x <= br.X; x++) {
-            if (Symbols.TryGetValue((x, tl.Y), out symbol)) yield return symbol;
-            if (Symbols.TryGetValue((x, br.Y), out symbol)) yield return symbol;
-        }
-
-        // middle row. // x 3 y 4
-        if (Symbols.TryGetValue((tl.X, point.Y), out symbol)) yield return symbol;
-        if (Symbols.TryGetValue((br.X, point.Y), out symbol)) yield return symbol;
-
-        yield break;
-    }
-
-    public IEnumerable<int> GetNeighbors((int X, int Y) point) {
-        // search box
-        (int X, int Y) tl = (point.X - 1, point.Y - 1);
-        (int X, int Y) br = (point.X + 1, point.Y + 1);
-        int number;
-
-        // top and bottom row. 
-        for (int x = tl.X; x <= br.X; x++) {
-            if (Numbers[tl.Y].TryGetValue(x, out number)) yield return number;
-            if (Numbers[br.Y].TryGetValue(x, out number)) yield return number;
-        }
-
-        // middle row.
-        if (Numbers[point.Y].TryGetValue(tl.X, out number)) yield return number;
-        if (Numbers[point.Y].TryGetValue(br.X, out number)) yield return number;
-
-        // left side.
-        for (int y = tl.Y; y <= br.Y; y++) {
-//            Numbers[y].Keys.BinarySearch(x)
-        }
-
-        yield break;
+        // middle.
+        if (PartLocations.TryGetValue(new(tl.X, point.Y), out neighbor) && seenParts.Add(neighbor)) yield return neighbor;
+        if (PartLocations.TryGetValue(new(br.X, point.Y), out neighbor) && seenParts.Add(neighbor)) yield return neighbor;
     }
 }
