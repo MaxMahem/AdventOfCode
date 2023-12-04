@@ -36,7 +36,6 @@ public record PartSymbol(char Symbol, Point Location, Guid Guid) : IPart {
     public int Length => 1;
 }
 
-
 public interface IPart {
     Point Location { get; }
     int Length { get; }
@@ -53,12 +52,27 @@ public class Schematic
     public Schematic(int width, int height, IEnumerable<IPart> parts) {
         this.Width  = width  > 0 ? width  : throw new ArgumentException("Must be greater than 0.", nameof(width));
         this.Height = height > 0 ? height : throw new ArgumentException("Must be greater than 0.", nameof(height));
-        ArgumentNullException.ThrowIfNull(nameof(parts));
+        ArgumentNullException.ThrowIfNull(parts, nameof(parts));
         this.Parts = parts.ToImmutableArray();
         this.PartLocations = ParsePartList(parts).ToImmutableDictionary();
     }
 
+    public static IDictionary<Point, IPart> ParsePartList(IEnumerable<IPart> parts) {
+        Dictionary<Point, IPart> partDictionary = [];
+
+        // note that a part will get inserted multiple times if it exists in multiple locations.
+        foreach (IPart part in parts) {
+            int endX = part.Location.X + part.Length;
+            for (int x = part.Location.X; x < endX; x++) {
+                partDictionary.Add(new Point(x, part.Location.Y), part);
+            }
+        }
+        return partDictionary;
+    }
+
     public static Schematic ParsePlan(string input) {
+        ArgumentNullException.ThrowIfNull(input, nameof(input));
+
         var text = input.AsSpan();
         List<IPart> parts = [];
 
@@ -96,29 +110,10 @@ public class Schematic
         return new Schematic(width, y, parts);
     }
 
-    public static IDictionary<Point, IPart> ParsePartList(IEnumerable<IPart> parts) {
-        ArgumentNullException.ThrowIfNull(nameof(parts));
-
-        Dictionary<Point, IPart> partDictionary = [];
-
-        foreach (IPart part in parts) {
-            // get the last location a part is inserted at. For a symbol, this is the first location.
-            // for a part number it depends on the number of digits.
-            int endX = part.Location.X + part switch {
-                PartNumber partNumber => partNumber.Number.Digits(),
-                PartSymbol            => 1,
-                _ => throw new ArgumentException("Undefined part found.", nameof(parts))
-            };
-
-            for (int x = part.Location.X; x < endX; x++) {
-                partDictionary.Add(new Point(x, part.Location.Y), part);
-            }
-        }
-        return partDictionary;
-    }
-
     public IEnumerable<IPart> GetNeighbors(IPart part) {
-        // search box
+        ArgumentNullException.ThrowIfNull(part, nameof(part));
+
+        // search box, 1 beyond size in x and y. TL = top left, br = bottom right.
         (Point point, int length) = (part.Location, part.Length);
         (int X, int Y) tl = (point.X - 1,      point.Y - 1);
         (int X, int Y) br = (point.X + length, point.Y + 1);
@@ -126,13 +121,13 @@ public class Schematic
 
         HashSet<IPart> seenParts = [];
 
-        // top and bottom row. 
+        // check top and bottom row. 
         for (int x = tl.X; x <= br.X; x++) {
             if (PartLocations.TryGetValue(new(x, tl.Y), out neighbor) && seenParts.Add(neighbor)) yield return neighbor;
             if (PartLocations.TryGetValue(new(x, br.Y), out neighbor) && seenParts.Add(neighbor)) yield return neighbor;
         }
 
-        // middle.
+        // check middle sides.
         if (PartLocations.TryGetValue(new(tl.X, point.Y), out neighbor) && seenParts.Add(neighbor)) yield return neighbor;
         if (PartLocations.TryGetValue(new(br.X, point.Y), out neighbor) && seenParts.Add(neighbor)) yield return neighbor;
     }
