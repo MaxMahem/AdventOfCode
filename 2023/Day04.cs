@@ -22,12 +22,11 @@ public class Day04 : AdventBase {
     protected override object InternalPart2() {
         var ticketCounters = _tickets!.Select(ticket => new TicketCounter(1, ticket)).ToList();
         for (int index = 0; index < ticketCounters.Count; index++) {
-            var ticketCounter = ticketCounters[index];
-            for (var extraTickets = ticketCounter.TicketPair.MatchingCount; extraTickets > 0; extraTickets--) {
-                ticketCounters[index + extraTickets].Count += ticketCounter.Count;
+            for (var extraTickets = ticketCounters[index].TicketPair.MatchingCount; extraTickets > 0; extraTickets--) {
+                ticketCounters[index + extraTickets].Count += ticketCounters[index].Count;
             }
         }
-        return ticketCounters.Select(twc => twc.Count).Sum();
+        return ticketCounters.Select(counter => counter.Count).Sum();
     }
 
     private record TicketCounter(int Count, TicketPair TicketPair) {
