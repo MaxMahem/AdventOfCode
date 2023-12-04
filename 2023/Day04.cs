@@ -40,6 +40,7 @@ public class TicketPair(int id, IEnumerable<int> scratchNumbers, IEnumerable<int
     public IEnumerable<int> WinningNumbers { get; } = winningNumbers ?? throw new ArgumentNullException(nameof(winningNumbers));
     public int MatchingCount { get; } = scratchNumbers.Intersect(winningNumbers).Count();
 
+    /// <summary>A doubling series, 0, 1, 2, 4, 8, 16...</summary>
     public static readonly ImmutableArray<int> NaiveCardScores 
         = Enumerable.Range(-1, MAX_WINNING_NUMBERS).Select(index => index == -1 ? 0 : 1 << index).ToImmutableArray();
     
