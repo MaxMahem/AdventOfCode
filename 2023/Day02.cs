@@ -3,12 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+
 using Sprache;
 
 using AdventOfCodeSupport;
+using AdventOfCode.Helpers;
 
 using BoxSet = IReadOnlyDictionary<BoxColor, int>;
-using AdventOfCode.Helpers;
 
 public class Day02 : AdventBase
 {
@@ -33,31 +34,30 @@ public readonly record struct Game(int Id, IEnumerable<BoxSet> Rounds) {
     public readonly bool ValidateSetMaximums(int maxRed, int maxGreen, int maxBlue) => 
         Rounds.All(round => round.ValidateMaxiums(maxRed, maxGreen, maxBlue));
 
-    public readonly BoxSet GetMinPossibleSet() {
-        (int minRed, int minBlue, int minGreen) = (0, 0, 0);
-        foreach (var boxSet in Rounds) {
-            (int red, int green, int blue) = boxSet;
-            (minRed, minGreen, minBlue) = (Math.Max(minRed, red), Math.Max(minGreen, green), Math.Max(minBlue, blue));
-        }
-        return new Dictionary<BoxColor, int>{ 
-            { BoxColor.Red,   minRed }, 
-            { BoxColor.Green, minGreen }, 
-            { BoxColor.Blue,  minBlue } 
-        };
-    }
+    public readonly BoxSet GetMinPossibleSet() => Rounds.Aggregate(BoxSetExtensions.MaxOfTwoSets);
 }
 
 public static class BoxSetExtensions {
-    public static bool ValidateMaxiums(this BoxSet boxSet, int maxRed, int maxGreen, int maxBlue) {
-        (int red, int green, int blue) = boxSet;
-        return red <= maxRed && green <= maxGreen && blue <= maxBlue;
-    }
-
     public static void Deconstruct(this BoxSet boxSet, out int red, out int green, out int blue) {
         red   = boxSet.TryGetValue(BoxColor.Red,   out red)   ? red   : 0;
         green = boxSet.TryGetValue(BoxColor.Green, out green) ? green : 0;
         blue  = boxSet.TryGetValue(BoxColor.Blue,  out blue)  ? blue  : 0;
     }
+    public static bool ValidateMaxiums(this BoxSet boxSet, int maxRed, int maxGreen, int maxBlue) {
+        (int red, int green, int blue) = boxSet;
+        return red <= maxRed && green <= maxGreen && blue <= maxBlue;
+    }
+    public static BoxSet MaxOfTwoSets(this BoxSet leftSet, BoxSet rightSet) {
+        (int lRed, int lGreen, int lBlue) = leftSet;
+        (int rRed, int rGreen, int rBlue) = rightSet;
+        return Create((Math.Max(lRed, rRed), Math.Max(lGreen, rGreen), Math.Max(lBlue, rBlue)));
+    }
+
+    public static BoxSet Create((int Red, int Green, int Blue) set) => new Dictionary<BoxColor, int>{
+        { BoxColor.Red,   set.Red },
+        { BoxColor.Green, set.Green },
+        { BoxColor.Blue,  set.Blue }
+    }.ToImmutableDictionary();
 }
 public enum BoxColor { Red, Green, Blue }
 

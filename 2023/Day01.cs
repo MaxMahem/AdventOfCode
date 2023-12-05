@@ -41,8 +41,6 @@ public class Day01 : AdventBase
     }
 
     protected override object InternalPart2() {
-        // var enumerator = Input.Text.GetEnumerator();
-
         // wordsMatchedLetters keeps track of how many matching letters have been seen in every word
         Span<int> wordsMatchedLetters = stackalloc int[WordNumbers.Length];
         int sum = 0;
