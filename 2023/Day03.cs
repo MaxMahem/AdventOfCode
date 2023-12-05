@@ -7,6 +7,8 @@ using System.Drawing;
 
 using AdventOfCode.Helpers;
 using AdventOfCodeSupport;
+using Microsoft.CodeAnalysis;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public class Day03 : AdventBase
 {
@@ -59,6 +61,7 @@ public class Schematic(int width, int height, IEnumerable<IPart> parts)
         foreach (var line in text.EnumerateLines()) {
             int index = 0;
             while (index < line.Length) {
+                // advance to next non dot character.
                 int hitIndex = line[index..].IndexOfAnyExcept('.');
                 if (hitIndex == -1) break; // EoL.
 
@@ -74,9 +77,7 @@ public class Schematic(int width, int height, IEnumerable<IPart> parts)
 
                     case var digit when char.IsDigit(digit):
                         int number = 0;
-                        do {
-                            // multiples the number by 10 and adds the new number at the end.
-                            // this allows parsing numbers from right to left
+                        do {    // parse the number from right to left.
                             number = number * 10 + (digit - '0');
                             index++;
                         } while (index < line.Length && char.IsDigit(digit = line[index]));
