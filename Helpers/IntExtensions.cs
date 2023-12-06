@@ -15,5 +15,5 @@ public static partial class IntExtensions
         _ => 10
     };
 
-    public static bool IsEven(this int number) => number % 2 == 0;
+    public static bool IsEven(this int number) => int.IsEvenInteger(number);
 }
