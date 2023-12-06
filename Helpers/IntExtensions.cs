@@ -14,4 +14,6 @@ public static partial class IntExtensions
         < 1000000000 and > -1000000000 => 9,
         _ => 10
     };
+
+    public static bool IsEven(this int number) => number % 2 == 0;
 }

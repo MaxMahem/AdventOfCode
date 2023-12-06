@@ -8,7 +8,6 @@ using System.Drawing;
 using AdventOfCode.Helpers;
 using AdventOfCodeSupport;
 using Microsoft.CodeAnalysis;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public class Day03 : AdventBase
 {
