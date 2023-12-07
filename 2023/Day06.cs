@@ -1,13 +1,8 @@
 ﻿namespace AdventOfCode._2023;
 
 using AdventOfCode.Helpers;
-using AdventOfCodeSupport;
+
 using Sprache;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Threading.Tasks;
 
 public class Day06 : AdventBase
 {
@@ -30,6 +25,7 @@ public class Day06 : AdventBase
 }
 
 public readonly record struct RaceData(long Time, long Distance) {
+    /// <summary>Enumerates all winning race combinations for the given race data.</summary>
     public IEnumerable<(long hold, long distance)> GetWinningCombinations() {
         var (endHold, startHold) = this.MinimumWinningHolds;
         for (; startHold < endHold; startHold++) {
@@ -38,13 +34,16 @@ public readonly record struct RaceData(long Time, long Distance) {
         }
     }
 
+    // note that distance is + 1 because the wining time must be *past* the distance.
     public (long endHold, long startHold) MinimumWinningHolds { get; } = CalculateMinimumHold(Time, Distance + 1);
         
+    /// <summary>The min and max winning hold time can be found using the quadratic equation.</summary>
     public static (long endHold, long startHold) CalculateMinimumHold(long time, long distance)
     {
-        long hold1 = (long)Math.Floor(  (time + Math.Sqrt(time * time - 4 * distance)) / 2);
-        long hold2 = (long)Math.Ceiling((time - Math.Sqrt(time * time - 4 * distance)) / 2);
-	    return (hold1, hold2);
+        // the rising side uses a ceiling rounding while the falling side uses a floor rounding.
+        long endHold   = (long)Math.Floor(  (time + Math.Sqrt(time * time - 4 * distance)) / 2);
+        long startHold = (long)Math.Ceiling((time - Math.Sqrt(time * time - 4 * distance)) / 2);
+	    return (endHold, startHold);
     }
 }
 

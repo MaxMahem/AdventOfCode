@@ -1,12 +1,7 @@
 ﻿namespace AdventOfCode._2023;
 
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-
 using Sprache;
 
-using AdventOfCodeSupport;
 using AdventOfCode.Helpers;
 
 using BoxSet = IReadOnlyDictionary<BoxColor, int>;

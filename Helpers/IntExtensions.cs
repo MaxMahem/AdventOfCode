@@ -1,7 +1,5 @@
 ﻿namespace AdventOfCode.Helpers;
-
-public static partial class IntExtensions
-{
+public static partial class IntExtensions {
     public static int DigitCount(this int number) => number switch {
         < 10         and > -10         => 1,
         < 100        and > -100        => 2,

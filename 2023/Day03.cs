@@ -1,13 +1,8 @@
 ﻿namespace AdventOfCode._2023;
 
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Drawing;
 
 using AdventOfCode.Helpers;
-using AdventOfCodeSupport;
-using Microsoft.CodeAnalysis;
 
 public class Day03 : AdventBase
 {

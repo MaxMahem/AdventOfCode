@@ -1,12 +1,6 @@
 ﻿namespace AdventOfCode._2023;
 
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-
 using Sprache;
-
-using AdventOfCodeSupport;
 
 public class Day04 : AdventBase {
     ImmutableList<TicketPair>? _tickets;

@@ -1,9 +1,5 @@
 ﻿namespace AdventOfCode.Helpers;
 
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-
 public static class IEnumerableNumeric
 {
     /// <summary>Returns the product (multiplication) of the values.</summary>

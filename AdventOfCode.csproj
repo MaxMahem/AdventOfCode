@@ -13,8 +13,4 @@
     <PackageReference Include="Sprache" Version="2.3.1" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="2023\Inputs\" />
-  </ItemGroup>
-
 </Project>

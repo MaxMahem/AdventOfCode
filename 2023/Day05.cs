@@ -1,14 +1,8 @@
 ﻿namespace AdventOfCode._2023;
 
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-
 using Sprache;
 
 using AdventOfCode.Helpers;
-using AdventOfCodeSupport;
-using System.Numerics;
 
 public class Day05 : AdventBase
 {
@@ -63,7 +57,7 @@ public class SeedMap(string fromName, string toName, IEnumerable<RangeMapping> r
 {
     string FromName { get; } = fromName ?? throw new ArgumentNullException(nameof(fromName));
     string ToName   { get; } = toName   ?? throw new ArgumentNullException(nameof(toName));
-    IEnumerable<RangeMapping> RangeMaps { get; } = rangeMaps?.OrderBy(map => map.SourceStart).ToImmutableArray()
+    IReadOnlyList<RangeMapping> RangeMaps { get; } = rangeMaps?.OrderBy(map => map.SourceStart).ToImmutableArray()
             ?? throw new ArgumentNullException(nameof(rangeMaps));
 
     public long MapValue(long inValue) {
@@ -79,7 +73,7 @@ public class SeedMap(string fromName, string toName, IEnumerable<RangeMapping> r
         var mapEnumerator = RangeMaps.GetEnumerator();
 
         // dual enumeration. Range items will reque until they have all been difinitively mapped (by the 2nd case).
-        // map items will just iterate. Loop ends when either list is exausted. 
+        // map items will just iterate until gone. Loop ends when either list is exausted. 
         while (ranges.Count > 0 && mapEnumerator.MoveNext()) {
             var currentMap = mapEnumerator.Current;
 
@@ -88,15 +82,15 @@ public class SeedMap(string fromName, string toName, IEnumerable<RangeMapping> r
 
             // when split with another range, the split range will be either all inside, all outside, or split in two.
             switch ((splitInside, splitOutside)) {
-                case (Range<long> inside, Range<long> outside):   // range was split.
+                case (Range<long> inside, Range<long> outside): // range was split.
                     yield return currentMap.MapRange(inside); 
-                    ranges.Enqueue(outside);                  // enque outside portion to check again.
+                    ranges.Enqueue(outside);                    // enque outside portion to check again.
                     break;
                 case (Range<long> inside, null):                // range is entirely inside.
-                    yield return currentMap.MapRange(inside);
+                    yield return currentMap.MapRange(inside);   // range section will exit loop here.
                     break;
                 case (null, Range<long> outside):               // range is entirley outside.
-                    ranges.Enqueue(outside);
+                    ranges.Enqueue(outside);                    // enque to check again.
                     break;
                 default:
                     throw new InvalidOperationException("Invalid range split returned.");
@@ -145,13 +139,13 @@ public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> w
     /// <returns>A tuple with nullable components corresponding to the portions of <paramref name="other"/>
     /// inside and outside.</returns>
 	public (Range<T>? inside, Range<T>? outside) Split(Range<T> other) {
-	    if (this.Contains(other))    return (other, null); // entirely within, return other as inside.
+	    if (this.Contains(other))    return (other, null); // entirely within,  return other as inside.
 	    if (!this.Intersects(other)) return (null, other); // entirely without, return other as outside.
 
 	    // Determine the portion inside the intersecting range
 	    T insideStart = T.Max(other.Start, Start);
 	    T insideEnd   = T.Min(other.End,   End);
-	    Range<T> insideRange = new Range<T>(insideStart, insideEnd);
+	    Range<T> insideRange  = new Range<T>(insideStart,  insideEnd);
 
 	    // Determine the portion outside the intersecting range
 	    T outsideStart = other.Start < Start ? other.Start : End;

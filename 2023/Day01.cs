@@ -1,8 +1,5 @@
 ﻿namespace AdventOfCodeMax._2023;
 
-using AdventOfCodeSupport;
-using System;
-
 public class Day01 : AdventBase
 {
     protected override object InternalPart1() {
