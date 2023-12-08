@@ -1,4 +1,5 @@
 ﻿namespace AdventOfCode._2023;
+using Sprache;
 
 public class Day07 : AdventBase
 {
