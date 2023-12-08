@@ -13,4 +13,10 @@
     <PackageReference Include="Sprache" Version="2.3.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="2023\Inputs\08.txt">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

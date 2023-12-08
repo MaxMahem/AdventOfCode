@@ -1,47 +1,52 @@
 ﻿using AdventOfCode.Helpers;
+using System.Diagnostics;
+using System.IO;
 
-string testData1 = 
-@"32T3K 765
-T55J5 684
-KK677 28
-KTJJT 220
-QQQJA 483";
+string testData1 =
+@"LLR
+
+AAA = (BBB, BBB)
+BBB = (AAA, ZZZ)
+ZZZ = (ZZZ, ZZZ)";
 
 // Part 1: 6592
 // Part 2: 6839
 
 string testData2 =
-@"2345A 1
-Q2KJJ 13
-Q2Q2Q 19
-T3T3J 17
-T3Q33 11
-2345J 3
-J345A 2
-32T3K 5
-T55J5 29
-KK677 7
-KTJJT 34
-QQQJA 31
-JJJJJ 37
-JAAAA 43
-AAAAJ 59
-AAAAA 61
-2AAAA 23
-2JJJJ 53
-JJJJ2 41";
+@"RL
+
+AAA = (BBB, CCC)
+BBB = (DDD, EEE)
+CCC = (ZZZ, GGG)
+DDD = (DDD, DDD)
+EEE = (EEE, EEE)
+GGG = (GGG, GGG)
+ZZZ = (ZZZ, ZZZ)";
+
+string testData3 =
+@"LR
+
+11A = (11B, XXX)
+11B = (XXX, 11Z)
+11Z = (11B, XXX)
+22A = (22B, XXX)
+22B = (22C, 22C)
+22C = (22Z, 22Z)
+22Z = (22B, 22B)
+XXX = (XXX, XXX)";
 
 var solutions = new AdventSolutions();
-var today = solutions.GetDay(2023, 7);
+var today = solutions.GetDay(2023, 8);
 
 // await today.DownloadInputAsync();
 
-// today.SetTestInput(testData2);
-// today.Part1().Part2();
+// today.SetTestInput(testData3);
+today.Part1();
+today.Part2();
 
-await today.CheckPart1Async();
-await today.CheckPart2Async();
+// await today.CheckPart1Async();
+// await today.CheckPart2Async();
 
 // await Task.WhenAll(solutions.Select(async day => { await day.CheckPart1Async(); await day.CheckPart2Async(); }));
 
-today.Benchmark();
+// today.Benchmark();
