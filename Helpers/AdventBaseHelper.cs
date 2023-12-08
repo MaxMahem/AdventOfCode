@@ -1,5 +1,6 @@
 ﻿namespace AdventOfCode.Helpers;
 using AdventOfCodeSupport;
+using System.Threading.Tasks;
 
 public static class AdventBaseHelper
 {
