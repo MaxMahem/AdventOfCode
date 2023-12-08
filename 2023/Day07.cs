@@ -1,12 +1,9 @@
 ﻿namespace AdventOfCode._2023;
 
-using static AdventOfCode._2023.Hand;
-
 public class Day07 : AdventBase
 {
     IEnumerable<HandBid>? _handBids;
     
-
     protected override void InternalOnLoad() {
         _handBids = CardParser.Parse(Input.Text).ToList();
     }
@@ -53,24 +50,24 @@ public class CamelPokerGame(char? wildcard = null) {
         }
 
         // push the typeScore to be in front of the cardScore, so that hand valule is evaluated first.
-        HandType type = _handTyper(seenCards);
+        Hand.HandType type = _handTyper(seenCards);
         int typeScore = (int)type << 20;
 
         return cardsScore + typeScore;
     }
 
     // determines the hand type given a count of the number of seen cards, for hands without wildcards.
-    private static HandType TypeHand(Span<byte> seenCards) {
+    private static Hand.HandType TypeHand(Span<byte> seenCards) {
         // turns the count of cards seen into a pseudo-bitmask.
         int handType = 0;
         foreach (int count in seenCards) {
             handType += (1 << count) - 1 - count;
         }
-        return (HandType)handType;
+        return (Hand.HandType)handType;
     }
 
     // determines the hand type given a count of the number of seen cards, for games with wildcards.
-    private static HandType TypeHandWildcard(Span<byte> seenCards) {
+    private static Hand.HandType TypeHandWildcard(Span<byte> seenCards) {
         int wildcards = seenCards[0];                   // wildcards are the lowest value card, at the first index. 
         if (wildcards == 0) return TypeHand(seenCards); // if no wildcard use the default (faster) typing method.
 
@@ -84,17 +81,17 @@ public class CamelPokerGame(char? wildcard = null) {
         // wildcards match with any card, so increase the max matches to take into acount.
         maxCount += seenCards[0];
         return (maxCount, cardTypes) switch {   // using the max count and the number of types seen a type can be determined.
-            (5, _) => HandType.FiveOfAKind,
-            (4, _) => HandType.FourOfAKind,
-            (3, 2) => HandType.FullHouse,
-            (3, _) => HandType.ThreeOfAKind,
-            (2, 3) => HandType.TwoPair,
-            (2, _) => HandType.OnePair,
-             _     => HandType.HighCard,
+            (5, _) => Hand.HandType.FiveOfAKind,
+            (4, _) => Hand.HandType.FourOfAKind,
+            (3, 2) => Hand.HandType.FullHouse,
+            (3, _) => Hand.HandType.ThreeOfAKind,
+            (2, 3) => Hand.HandType.TwoPair,
+            (2, _) => Hand.HandType.OnePair,
+             _     => Hand.HandType.HighCard,
         };
     }
 
-    public delegate HandType HandTyper(Span<byte> span);
+    public delegate Hand.HandType HandTyper(Span<byte> span);
 }
 
 public readonly record struct Hand(string HandText, int Score, IReadOnlyList<Card> Cards) { 
