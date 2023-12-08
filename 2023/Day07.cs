@@ -1,36 +1,48 @@
 ﻿namespace AdventOfCode._2023;
-using Sprache;
+
+using static AdventOfCode._2023.Hand;
 
 public class Day07 : AdventBase
 {
-    protected override void InternalOnLoad() {
+    IEnumerable<HandBid>? _handBids;
+    
 
+    protected override void InternalOnLoad() {
+        _handBids = CardParser.Parse(Input.Text).ToList();
     }
 
-    protected override object InternalPart1() => 
-        CardParser.Parse(Input.Text).Select(t => (Score: Hand.GetScore(t.hand), Bid: t.bid))
-                                    .OrderBy(t => t.Score).Select((t, i) => (i + 1) * t.Bid).Sum();
+    protected override object InternalPart1() {
+        var game = new CamelPokerGame();
 
-    protected override object InternalPart2() =>
-        CardParser.Parse(Input.Text).Select(t => (Score: Hand.GetScoreWithJokers(t.hand), Bid:t.bid))
-                                    .OrderBy(t => t.Score).Select((t, i) => (i + 1) * t.Bid).Sum();
+        return _handBids!.Select(hb => (Score: game.ScoreHand(hb.Hand), hb.Bid))
+                         .OrderBy(t => t.Score).Select((t, i) => (i + 1) * t.Bid).Sum();
+    }
+
+    protected override object InternalPart2() {
+        var game = new CamelPokerGame('J');
+
+        return _handBids!.Select(hb => (Score: game.ScoreHand(hb.Hand), hb.Bid))
+                         .OrderBy(t => t.Score).Select((t, i) => (i + 1) * t.Bid).Sum();
+    }
 }
 
-public readonly record struct Hand
-{
-    public Hand(string hand) {
-        Cards = hand.Select(c => new Card(c)).ToImmutableArray();
-        Score = GetScore(hand);
-    }
-    public readonly IReadOnlyList<Card> Cards { get; }
-    public readonly int Score { get; }
+public readonly record struct HandBid(string Hand, int Bid);
 
-    public static int GetScore(IEnumerable<char> hand) {
-        Span<int> seenCards = stackalloc int[Card.SYMBOL_RANKING.Length];
+public class CamelPokerGame(char? wildcard = null) {
+    public char? Wildcard { get; } = wildcard;
+
+    private readonly Func<char, byte> _cardScorer = wildcard is char wc ? card => Card.GetScore(card, (char)wildcard)
+                                                                        : Card.GetScore;
+
+    private readonly HandTyper _handTyper = wildcard is not null ? TypeHandWildcard : TypeHand;
+
+    public int ScoreHand(string hand) {
+        Span<byte> seenCards = stackalloc byte[Card.VALID_SYMBOLS.Length + 1];
         int cardsScore = 0, handIndex = 0;
 
-        foreach (var card in hand) {
-            byte cardScore = Card.ScoreSymbol(card);
+        // score all the cards in the hand, and track how many have been seen.
+        foreach (char card in hand) {
+            byte cardScore = _cardScorer(card);
 
             // track how many times a card is seen. cardScore is a 0-13 value so can be used as an index.
             seenCards[cardScore]++;
@@ -40,59 +52,53 @@ public readonly record struct Hand
             handIndex++;
         }
 
-        // type functions as a pseudo-bitmask. 
-        int type = 0;
-        foreach (int count in seenCards) {
-            type += (1 << count) - 1 - 1 * count;
-        }
         // push the typeScore to be in front of the cardScore, so that hand valule is evaluated first.
-        int typeScore = type << 20;
+        HandType type = _handTyper(seenCards);
+        int typeScore = (int)type << 20;
 
         return cardsScore + typeScore;
     }
 
-    public static int GetScoreWithJokers(string hand) {
-        Span<int> seenCards = stackalloc int[Card.SYMBOL_RANKING.Length];
-        int cardsScore = 0, handIndex = 0;
-
-        foreach (var card in hand) {
-            byte cardScore = Card.ScoreSymbolWithJokers(card);
-
-            // track how many times a card is seen. cardScore is a 0-13 value so can be used as an index.
-            seenCards[cardScore]++;
-
-            // push the cardScore into the score based on the index, first card score ends up first.
-            cardsScore += cardScore << ((4 - handIndex) * 4);
-            handIndex++;
+    // determines the hand type given a count of the number of seen cards, for hands without wildcards.
+    private static HandType TypeHand(Span<byte> seenCards) {
+        // turns the count of cards seen into a pseudo-bitmask.
+        int handType = 0;
+        foreach (int count in seenCards) {
+            handType += (1 << count) - 1 - count;
         }
+        return (HandType)handType;
+    }
 
-        // check the seen cards to find the number of cards seen and the max matches
+    // determines the hand type given a count of the number of seen cards, for games with wildcards.
+    private static HandType TypeHandWildcard(Span<byte> seenCards) {
+        int wildcards = seenCards[0];                   // wildcards are the lowest value card, at the first index. 
+        if (wildcards == 0) return TypeHand(seenCards); // if no wildcard use the default (faster) typing method.
+
+        // check the seen cards to find the number of types cards seen and the max matching
         int cardTypes = 0; int maxCount = 0;
-        foreach (var count in seenCards) {
+        foreach (var count in seenCards[1..]) {
             if (count != 0) cardTypes++;
             maxCount = Math.Max(maxCount, count);
         }
-        
-        // jokers are the lowest value card, with first index. 
-        // jokers match with any card, so increase the max matches to take into acount.
+
+        // wildcards match with any card, so increase the max matches to take into acount.
         maxCount += seenCards[0];
-        HandType type = (maxCount, cardTypes) switch {
+        return (maxCount, cardTypes) switch {   // using the max count and the number of types seen a type can be determined.
             (5, _) => HandType.FiveOfAKind,
             (4, _) => HandType.FourOfAKind,
             (3, 2) => HandType.FullHouse,
             (3, _) => HandType.ThreeOfAKind,
             (2, 3) => HandType.TwoPair,
             (2, _) => HandType.OnePair,
-            _      => HandType.HighCard,
+             _     => HandType.HighCard,
         };
-
-        // push the typeScore to be in front of the cardScore, so that hand valule is evaluated first.
-        int typeScore = (int)type << 20;
-
-        return cardsScore + typeScore;
     }
 
-    enum HandType : byte { 
+    public delegate HandType HandTyper(Span<byte> span);
+}
+
+public readonly record struct Hand(string HandText, int Score, IReadOnlyList<Card> Cards) { 
+    public enum HandType : byte { 
         FiveOfAKind  = 26,
         FourOfAKind  = 11,
         FullHouse    = 5,
@@ -105,47 +111,44 @@ public readonly record struct Hand
 
 public readonly record struct Card(char Symbol)
 {
-    public readonly short Score = (short)SYMBOL_RANKING.IndexOf(Symbol);
+    public byte Score { get; } = GetScore(Symbol);
 
-    public const string SYMBOL_RANKING = "23456789TJQKA";
-
-    public static byte ScoreSymbol(char card) => card switch {
-        'A' => 12,
-        'K' => 11,
-        'Q' => 10,
-        'J' => 9,
-        'T' => 8,
-        <= '9' and >= '2' => (byte)(card - '2'),
-        _ => throw new ArgumentException("Invalid card symbol.", nameof(card)),
-    };
-
-    public static byte ScoreSymbolWithJokers(char card) => card switch {
-        'A' => 12,
-        'K' => 11,
-        'Q' => 10,
-        'J' => 0,   // jacks/jokers score as 0.
-        'T' => 9,   // 
+    // Gets the numeric value of this card, 1-13 (0 reserved for wildcards).
+    public static byte GetScore(char card) => card switch {
+        'A' => 13,
+        'K' => 12,
+        'Q' => 11,
+        'J' => 10,
+        'T' => 9,
         <= '9' and >= '2' => (byte)(card - '1'),
         _ => throw new ArgumentException("Invalid card symbol.", nameof(card)),
     };
+
+    // Gets the numeric value of this card, with a wildcard 0-13, old value will be skipped.
+    public static byte GetScore(char card, char wildcard) =>
+        card != wildcard ? GetScore(card) : (byte)0;
+
+    public const string VALID_SYMBOLS = "AKQJT98765432";
 }
 
 internal static class CardParser {
-    public static IEnumerable<(string hand, int bid)> Parse(string text) {
+    public static IEnumerable<HandBid> Parse(string text) {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
 
         int index = 0; char digit;
         do  {
+            // parse the hand.
             var hand = text[index..(index + 5)];
             index += 5;
 
+            // parse the bid.
             int bid = 0;
             while ((++index < text.Length) && char.IsAsciiDigit(digit = text[index])) {
                 bid *= 10;
                 bid += digit - '0';
             }
             
-            yield return (hand.ToString(), bid);
+            yield return new HandBid(hand.ToString(), bid);
 
             // Skip over EOL characters
             index = text.IndexOf('\n', index) + 1;

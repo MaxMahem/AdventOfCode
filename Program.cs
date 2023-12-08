@@ -1,7 +1,6 @@
-﻿using AdventOfCode._2023;
-using AdventOfCode.Helpers;
+﻿using AdventOfCode.Helpers;
 
-string testData1 = //  55 13
+string testData1 = 
 @"32T3K 765
 T55J5 684
 KK677 28
@@ -45,4 +44,4 @@ await today.CheckPart2Async();
 
 // await Task.WhenAll(solutions.Select(async day => { await day.CheckPart1Async(); await day.CheckPart2Async(); }));
 
-// today.Benchmark();
+today.Benchmark();
