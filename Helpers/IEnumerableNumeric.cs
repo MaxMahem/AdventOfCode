@@ -11,7 +11,6 @@ public static class IEnumerableNumericHelper
         if (numbers is null || !numbers.Any()) throw new ArgumentException("Must contain at least one number.", nameof(numbers));
 
         long lcm = numbers.First();
-
         foreach (int number in numbers.Skip(1)) 
             lcm = GenericMath.LCM(lcm, number);
 
