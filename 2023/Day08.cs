@@ -44,22 +44,9 @@ public class GhostMap(Directions directions, IEnumerable<Node> nodes) {
     }
 
     private Node Step(Node node, bool direction) => direction ? Nodes[node.Left] : Nodes[node.Right];
-
-    private static BitArray EncodeDirections(string directions) {
-        BitArray encodedDirections = new(directions.Length);
-        for (int directionIndex = 0; directionIndex < directions.Length; directionIndex++) {
-            bool directionBit = directions[directionIndex] switch {
-                'L' => true,
-                'R' => false,
-                _ => throw new ArgumentException("Invalid direction symbol.", nameof(directions))
-            };
-            encodedDirections[directionIndex] = directionBit;
-        }
-        return encodedDirections;
-    }
 }
 
-public class Directions(string directions) : IEnumerable<bool> 
+public readonly struct Directions(string directions) : IEnumerable<bool> 
 {
     private readonly BitArray _directions = string.IsNullOrEmpty(directions) ? throw new ArgumentException("Cannot be empty", nameof(directions))
                                                                              : EncodeDirections(directions);
