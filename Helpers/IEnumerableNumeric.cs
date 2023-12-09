@@ -13,7 +13,7 @@ public static class IEnumerableNumericHelper
         long lcm = numbers.First();
 
         foreach (int number in numbers.Skip(1)) 
-            lcm = MathHelper.LCM(lcm, number);
+            lcm = GenericMath.LCM(lcm, number);
 
         return lcm;
     }

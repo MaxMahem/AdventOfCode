@@ -33,6 +33,8 @@ public class CamelPokerGame(char? wildcard = null) {
 
     private readonly HandTyper _handTyper = wildcard is not null ? TypeHandWildcard : TypeHand;
 
+    public Hand CreateHand(string hand) => new(hand, ScoreHand(hand));
+
     public int ScoreHand(string hand) {
         Span<byte> seenCards = stackalloc byte[Card.VALID_SYMBOLS.Length + 1];
         int cardsScore = 0, handIndex = 0;
@@ -94,7 +96,11 @@ public class CamelPokerGame(char? wildcard = null) {
     public delegate Hand.HandType HandTyper(Span<byte> span);
 }
 
-public readonly record struct Hand(string HandText, int Score, IReadOnlyList<Card> Cards) { 
+public readonly record struct Hand(string HandText, int Score) : IComparable<Hand> {
+    public HandType Type { get; } = (HandType)(Score >> 20);
+
+    public int CompareTo(Hand other) => Score.CompareTo(other.Score);
+
     public enum HandType : byte { 
         FiveOfAKind  = 26,
         FourOfAKind  = 11,
@@ -110,6 +116,8 @@ public readonly record struct Card(char Symbol)
 {
     public byte Score { get; } = GetScore(Symbol);
 
+    public Card(byte score) : this(GetSymbol(score)) { }
+    
     // Gets the numeric value of this card, 1-13 (0 reserved for wildcards).
     public static byte GetScore(char card) => card switch {
         'A' => 13,
@@ -124,6 +132,17 @@ public readonly record struct Card(char Symbol)
     // Gets the numeric value of this card, with a wildcard 0-13, old value will be skipped.
     public static byte GetScore(char card, char wildcard) =>
         card != wildcard ? GetScore(card) : (byte)0;
+
+    public static char GetSymbol(byte score) => score switch {
+        13 => 'A',
+        12 => 'K',
+        11 => 'Q',
+        10 => 'J',
+        9  => 'T',
+        <= 8 and >= 1 => (char)(score + '1'),
+        0 => '*',
+        _ => throw new ArgumentException("Invalid card score.", nameof(score)),
+    };
 
     public const string VALID_SYMBOLS = "AKQJT98765432";
 }

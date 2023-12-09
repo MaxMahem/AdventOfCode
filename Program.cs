@@ -41,12 +41,12 @@ var today = solutions.GetDay(2023, 8);
 // await today.DownloadInputAsync();
 
 // today.SetTestInput(testData3);
-today.Part1();
-today.Part2();
+// today.Part1();
+// today.Part2();
 
-// await today.CheckPart1Async();
-// await today.CheckPart2Async();
+await today.CheckPart1Async();
+await today.CheckPart2Async();
 
 // await Task.WhenAll(solutions.Select(async day => { await day.CheckPart1Async(); await day.CheckPart2Async(); }));
 
-// today.Benchmark();
+today.Benchmark();

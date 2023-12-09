@@ -1,5 +1,7 @@
 ﻿namespace AdventOfCode._2023;
 
+using System.Collections;
+
 using Sprache;
 
 using AdventOfCode.Helpers;
@@ -15,45 +17,20 @@ public class Day08 : AdventBase
     protected override object InternalPart1() => _map!.Navigate("AAA", "ZZZ");
 
     protected override object InternalPart2() =>
-        _map!.Nodes.Where(kvp => kvp.Key[2] == 'A').Select(kvp => kvp.Value)
-                   .Select(node => _map.Navigate(node, (Node n) => n.Key[2] == 'Z'))
+        _map!.Nodes.Where(kvp => kvp.Key.Check('A', 2)).Select(kvp => kvp.Value)
+                   .Select(node => _map.Navigate(node, (Node n) => n.Key.Check('Z', 2)))
                    .LCM();
 }
 
-public class GhostMap(string directions, IEnumerable<Node> nodes)
-{
-    public string Directions { get; } = string.IsNullOrEmpty(directions) ? throw new ArgumentException("Cannot be empty", nameof(directions))
-                                                                         : directions;
-    public IReadOnlyDictionary<string, Node> Nodes { get; } = nodes.ToImmutableDictionary(node => node.Key);
+public class GhostMap(Directions directions, IEnumerable<Node> nodes) {
+    public Directions Directions { get; } = directions;
 
-    public Node Step(Node node, char direction) => direction switch {
-        'L' => Nodes[node.Left],
-        'R' => Nodes[node.Right],
-        _ => throw new ArgumentException("Invalid direction.", nameof(direction))
-    };
-
-    public List<(int, Node)> FindLoop(Node start) {
-        List<(int, Node)> seenNodes = new(Nodes.Count);
-        var navigator = Directions.GetLoopingEnumerator();
-        Node currentNode = start;
-
-        do {
-            navigator.MoveNext();
-            currentNode = Step(currentNode, navigator.Current);
-
-            if (seenNodes.Contains((navigator.CurrentIndex, currentNode))) {
-                seenNodes.Add((navigator.Current, currentNode));
-                return seenNodes;
-            }
-
-            seenNodes.Add((navigator.Current, currentNode));
-        } while (true);
-    }
+    public IReadOnlyDictionary<NodeKey, Node> Nodes { get; } = nodes.ToImmutableDictionary(node => node.Key);
 
     public int Navigate(string start, string end) => Navigate(Nodes[start], Nodes[end]);
     public int Navigate(Node start, Node end) => Navigate(start, node => node == end);
     public int Navigate(Node start, Func<Node, bool> endPredicate) {
-        var loopingEnumerator = Directions.GetLoopingEnumerator();
+        var loopingEnumerator = Directions.GetEnumerator().MakeLooping();
         Node current = start;
 
         int steps = 0;
@@ -65,17 +42,72 @@ public class GhostMap(string directions, IEnumerable<Node> nodes)
 
         return steps;
     }
+
+    private Node Step(Node node, bool direction) => direction ? Nodes[node.Left] : Nodes[node.Right];
+
+    private static BitArray EncodeDirections(string directions) {
+        BitArray encodedDirections = new(directions.Length);
+        for (int directionIndex = 0; directionIndex < directions.Length; directionIndex++) {
+            bool directionBit = directions[directionIndex] switch {
+                'L' => true,
+                'R' => false,
+                _ => throw new ArgumentException("Invalid direction symbol.", nameof(directions))
+            };
+            encodedDirections[directionIndex] = directionBit;
+        }
+        return encodedDirections;
+    }
 }
 
-public record struct Node(string Key, string Left, string Right);
+public class Directions(string directions) : IEnumerable<bool> 
+{
+    private readonly BitArray _directions = string.IsNullOrEmpty(directions) ? throw new ArgumentException("Cannot be empty", nameof(directions))
+                                                                             : EncodeDirections(directions);
+
+    public IEnumerator<bool> GetEnumerator() => _directions.GetTypedEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => _directions.GetTypedEnumerator();
+
+    private static BitArray EncodeDirections(string directions) {
+        BitArray encodedDirections = new(directions.Length);
+        for (int directionIndex = 0; directionIndex < directions.Length; directionIndex++) {
+            bool directionBit = directions[directionIndex] switch {
+                'L' => true,
+                'R' => false,
+                _ => throw new ArgumentException("Invalid direction symbol.", nameof(directions))
+            };
+            encodedDirections[directionIndex] = directionBit;
+        }
+        return encodedDirections;
+    }
+}
+
+public record struct Node(NodeKey Key, NodeKey Left, NodeKey Right) { }
+
+public record struct NodeKey(int Key) {
+    public NodeKey(IEnumerable<char> text) : this(Parse(text)) { }
+
+    public static implicit operator NodeKey(string text) => new(text);
+
+    public static int Parse(IEnumerable<char> text) {
+        int key = 0; int index = 0;
+        foreach (char c in text) {
+            key |= c << index++ * 8;
+            if (index > 4) throw new ArgumentException("Text to large to encode", nameof(text));
+        }
+        return key;
+    }
+
+    /// <summary>Checks if this key coresponds to a symbol a specific positon.</summary>
+    /// <param name="index">The 0 based index of the symbol to check.</param>
+    public readonly bool Check(char symbol, int index) =>
+        (char)((this.Key >> (8 * index)) & 0xFF) == symbol;
+}
 
 internal static class GhostMapParser
 {
-    static readonly Parser<string> MapKeyParser = Parse.LetterOrDigit.Repeat(3).Text();
+    private static readonly Parser<NodeKey> MapKeyParser = Parse.LetterOrDigit.Repeat(3).Select(e => new NodeKey(e));
 
-    public static readonly Parser<string> Directions =
-        from directions in Parse.Chars("LR").Until(Parse.LineEnd).Text()
-        select directions;
+    public static readonly Parser<Directions> Directions = Parse.Chars("LR").Until(Parse.LineEnd).Text().Select(s => new Directions(s));
 
     public static readonly Parser<Node> NodeParser =
         from key in MapKeyParser.Token()
