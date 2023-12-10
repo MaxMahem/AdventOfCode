@@ -4,6 +4,8 @@ using Sprache;
 
 using AdventOfCode.Helpers;
 
+using RangeLong = Range<long>;
+
 public class Day05 : AdventBase
 {
     Almanac? almanac;
@@ -15,9 +17,9 @@ public class Day05 : AdventBase
         almanac!.SeedData.Select(seed => almanac.Maps.Aggregate(seed, (value, map) => map.MapValue(value))).Min();
 
     protected override object InternalPart2() {
-        List<Range<long>> resultRanges = [];
+        List<RangeLong> resultRanges = [];
         foreach (var seedRange in almanac!.SeedRanges) {
-            List<Range<long>> mappedRange = [seedRange];
+            List<RangeLong> mappedRange = [seedRange];
             foreach (var map in almanac!.Maps) {
                 mappedRange = mappedRange.Select(map.MapRange).SelectMany(e => e).Merge().ToList();
             }
@@ -29,7 +31,7 @@ public class Day05 : AdventBase
 
 public class Almanac {
     private readonly ImmutableArray<long> _seedData;
-    public IEnumerable<Range<long>> SeedRanges { get; }
+    public IEnumerable<RangeLong> SeedRanges { get; }
     public IEnumerable<long> SeedData => _seedData; 
     public IEnumerable<SeedMap> Maps { get; }
     public Almanac(IEnumerable<long> seedData, IEnumerable<SeedMap> maps) {
@@ -43,11 +45,12 @@ public class Almanac {
     }
 
     /// <summary>Pair up the seed data.</summary>
-    private static IEnumerable<Range<long>> PairSeedData(ImmutableArray<long> seedData) {
-        var seedRanges = new Range<long>[seedData.Length / 2];
+    private static IEnumerable<RangeLong> PairSeedData(ImmutableArray<long> seedData) {
+        var seedRanges = new RangeLong[seedData.Length / 2];
         for (int seedIndex = 0; seedIndex < seedData.Length - 1; seedIndex += 2) {
-            long start = seedData[seedIndex], end = seedData[seedIndex + 1] + start;
-            seedRanges[seedIndex/2] = new Range<long>(start, end);
+            long start = seedData[seedIndex];
+            long end   = seedData[seedIndex + 1] + start;
+            seedRanges[seedIndex/2] = new RangeLong(start, end);
         }
         return seedRanges.ToImmutableArray();
     }
@@ -67,48 +70,34 @@ public class SeedMap(string fromName, string toName, IEnumerable<RangeMapping> r
         return inValue;
     }
 
-    public IEnumerable<Range<long>> MapRange(Range<long> inRange) {
-        Queue<Range<long>> ranges = [];
-        ranges.Enqueue(inRange);
+    public IEnumerable<RangeLong> MapRange(RangeLong inRange) {
+        Queue<RangeLong> ranges = [inRange];
         var mapEnumerator = RangeMaps.GetEnumerator();
 
-        // dual enumeration. Range items will reque until they have all been difinitively mapped (by the 2nd case).
-        // map items will just iterate until gone. Loop ends when either list is exausted. 
+        // dual enumeration. Range items will reque until they have all been mapped
+        // maps will iterate until finished. Loop ends when either set is exausted. 
         while (ranges.Count > 0 && mapEnumerator.MoveNext()) {
             var currentMap = mapEnumerator.Current;
 
-            // split the front of the que with the current map
-            (Range<long>? splitInside, Range<long>? splitOutside) = currentMap.Source.Split(ranges.Dequeue());
-
-            // when split with another range, the split range will be either all inside, all outside, or split in two.
-            switch ((splitInside, splitOutside)) {
-                case (Range<long> inside, Range<long> outside): // range was split.
-                    yield return currentMap.MapRange(inside); 
-                    ranges.Enqueue(outside);                    // enque outside portion to check again.
-                    break;
-                case (Range<long> inside, null):                // range is entirely inside.
-                    yield return currentMap.MapRange(inside);   // range section will exit loop here.
-                    break;
-                case (null, Range<long> outside):               // range is entirley outside.
-                    ranges.Enqueue(outside);                    // enque to check again.
-                    break;
-                default:
-                    throw new InvalidOperationException("Invalid range split returned.");
-            }
+            // split the range at the front of the que with the current map
+            (RangeLong? splitLeft, RangeLong? splitInside, RangeLong? splitRight) = ranges.Dequeue().Split(currentMap.Source);
+            if (splitLeft   is RangeLong left)  ranges.Enqueue(left);                      // outside portions get enqued to get checked again.
+            if (splitRight  is RangeLong right) ranges.Enqueue(right);                    
+            if (splitInside is RangeLong inside) yield return currentMap.MapRange(inside); // inside portions are mapped and returned.
         }
-        // at most one item can remain in que when the maps are done. This range is outside and thus unmapped.
-        if (ranges.TryDequeue(out Range<long> finalRange)) yield return finalRange;
+        // empty and map any remaining items in que (should only be at most one.)
+        while (ranges.TryDequeue(out RangeLong finalRange)) yield return finalRange;
     }
 }
 
 public record RangeMapping(long DestStart, long SourceStart, long RangeLength) { 
-    public Range<long> Destination { get; } = new(DestStart,   DestStart   + RangeLength);
-    public Range<long> Source      { get; } = new(SourceStart, SourceStart + RangeLength);
+    public RangeLong Destination { get; } = new(DestStart,   DestStart   + RangeLength);
+    public RangeLong Source      { get; } = new(SourceStart, SourceStart + RangeLength);
 
-    public Range<long> MapRange(Range<long> range) {
-        if (!Source.Contains(range)) throw new ArgumentException("Range must be entirely within Source.", nameof(range));
+    public RangeLong MapRange(RangeLong range) {
+        if (!Source.Contains(range)) throw new ArgumentException("Must be entirely within Source.", nameof(range));
 
-        return new Range<long>(MapValue(range.Start), MapValue(range.End));
+        return new RangeLong(MapValue(range.Start), MapValue(range.End));
     }
 
     public bool TryMapValue(long inValue, out long outValue) {
@@ -121,7 +110,7 @@ public record RangeMapping(long DestStart, long SourceStart, long RangeLength) {
         return true;
     }
 
-    private long MapValue(long inValue)        => DestStart   - SourceStart + inValue;
+    private long MapValue(long inValue) => DestStart - SourceStart + inValue;
 };
 
 /// <summary>A generic Range. Uses an [start, end) definition.</summary>
@@ -134,26 +123,28 @@ public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> w
     public bool Intersects(Range<T> other) => Start < other.End && End > other.Start;
     public int CompareTo(Range<T> other) => Start.CompareTo(other.Start);
 
-    /// <summary>Splits <paramref name="other"/> by this range.</summary>
-    /// <param name="other">The Range<T> to split.</param>
-    /// <returns>A tuple with nullable components corresponding to the portions of <paramref name="other"/>
-    /// inside and outside.</returns>
-	public (Range<T>? inside, Range<T>? outside) Split(Range<T> other) {
-	    if (this.Contains(other))    return (other, null); // entirely within,  return other as inside.
-	    if (!this.Intersects(other)) return (null, other); // entirely without, return other as outside.
+    /// <summary>Splits this range by <paramref name="other"/>.</summary>
+    /// <param name="other">The Range(T) to split this range.</param>
+    /// <returns>A tuple with nullable components corresponding to the portions of this range to the left of,
+    /// right, of, and inside <paramref name="other"/></returns>
+    public (Range<T>? Left, Range<T>? Inside, Range<T>? Right) Split(Range<T> other) {
+        
+        if (other.Start >= End)   return (this, null, null); // entirely to the left of other range. 
+        if (other.End   <  Start) return (null, null, this); // entirely to the right of other range.
+        if (other.Contains(this)) return (null, this, null); // entirely within the other range.
 
-	    // Determine the portion inside the intersecting range
-	    T insideStart = T.Max(other.Start, Start);
-	    T insideEnd   = T.Min(other.End,   End);
-	    Range<T> insideRange  = new Range<T>(insideStart,  insideEnd);
+        // intersecting cases.
+        Range<T>? left = null, right = null;
 
-	    // Determine the portion outside the intersecting range
-	    T outsideStart = other.Start < Start ? other.Start : End;
-	    T outsideEnd   = other.End   > End   ? other.End   : Start;
-	    Range<T> outsideRange = new Range<T>(outsideStart, outsideEnd);
+        // in the case of an intersection there will always be an inside part.
+        Range<T> inside = new Range<T>(T.Max(other.Start, Start), T.Min(End, other.End));
 
-	    return (insideRange, outsideRange);
-	}
+        // Check and set the side parts conditionally. The only exist if a portion is outside the range.
+        if (other.Start > Start) left  = new Range<T>(Start, other.Start);
+        if (other.End   < End)   right = new Range<T>(other.End, End);
+
+        return (left, inside, right);
+    }
 
     public Range<T> Merge(Range<T> other) {
         if (!Intersects(other)) throw new ArgumentException("Ranges do not overlap.");

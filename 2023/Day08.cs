@@ -71,11 +71,11 @@ public readonly struct Directions(string directions) : IEnumerable<bool>
 public record struct Node(NodeKey Key, NodeKey Left, NodeKey Right) { }
 
 public record struct NodeKey(int Key) {
-    public NodeKey(IEnumerable<char> text) : this(Parse(text)) { }
+    public NodeKey(IEnumerable<char> text) : this(Encode(text)) { }
 
     public static implicit operator NodeKey(string text) => new(text);
 
-    public static int Parse(IEnumerable<char> text) {
+    public static int Encode(IEnumerable<char> text) {
         int key = 0; int index = 0;
         foreach (char c in text) {
             key |= c << index++ * 8;

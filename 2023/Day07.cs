@@ -73,7 +73,7 @@ public class CamelPokerGame(char? wildcard = null) {
         int wildcards = seenCards[0];                   // wildcards are the lowest value card, at the first index. 
         if (wildcards == 0) return TypeHand(seenCards); // if no wildcard use the default (faster) typing method.
 
-        // check the seen cards to find the number of types cards seen and the max matching
+        // check the seen cards to find the number of types cards seen and the max matching, skipping wildcards.
         int cardTypes = 0; int maxCount = 0;
         foreach (var count in seenCards[1..]) {
             if (count != 0) cardTypes++;
@@ -93,7 +93,7 @@ public class CamelPokerGame(char? wildcard = null) {
         };
     }
 
-    public delegate Hand.HandType HandTyper(Span<byte> span);
+    private delegate Hand.HandType HandTyper(Span<byte> span);
 }
 
 public readonly record struct Hand(string HandText, int Score) : IComparable<Hand> {
@@ -160,11 +160,10 @@ internal static class CardParser {
             // parse the bid.
             int bid = 0;
             while ((++index < text.Length) && char.IsAsciiDigit(digit = text[index])) {
-                bid *= 10;
-                bid += digit - '0';
+                bid = bid * 10 + digit - '0';
             }
             
-            yield return new HandBid(hand.ToString(), bid);
+            yield return new HandBid(hand, bid);
 
             // Skip over EOL characters
             index = text.IndexOf('\n', index) + 1;

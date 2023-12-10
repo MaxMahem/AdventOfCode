@@ -2,9 +2,9 @@
 
 using System;
 using System.Collections.Generic;
-
 using CommunityToolkit.HighPerformance;
-using MoreLinq;
+
+using AdventOfCode.Helpers;
 
 public class Day09 : AdventBase
 {
@@ -15,7 +15,7 @@ public class Day09 : AdventBase
     }
 
     protected override object InternalPart1() =>
-        _oasisSequences!.Select(seq => seq.Differences.Reverse().Skip(1).Aggregate(0L, (num, seq) => seq.Last() + num)).Sum();
+        _oasisSequences!.Select(seq => seq.Differences.Reverse().Skip(1).Aggregate(0L, (num, seq) => seq.Last()  + num)).Sum();
 
     protected override object InternalPart2() =>
         _oasisSequences!.Select(seq => seq.Differences.Reverse().Skip(1).Aggregate(0L, (num, seq) => seq.First() - num)).Sum();
@@ -27,7 +27,7 @@ public class Sequence<TNum>(IEnumerable<TNum> sequence)
     public IEnumerable<TNum> PrimeSequence { get; } = sequence ?? throw new ArgumentNullException(nameof(sequence));
     public IEnumerable<IEnumerable<TNum>> Differences { get; } = BuildDifferences(sequence);
 
-    public static IEnumerable<IEnumerable<TNum>> BuildDifferences(IEnumerable<TNum> sequence) {
+    private static IEnumerable<IEnumerable<TNum>> BuildDifferences(IEnumerable<TNum> sequence) {
         List<IEnumerable<TNum>> differances = [sequence.ToList()];
         do {
             differances.Add(differances[^1].Pairwise((left, right) => right - left).ToImmutableArray());
