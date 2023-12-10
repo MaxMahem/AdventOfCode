@@ -117,7 +117,7 @@ public record RangeMapping(long DestStart, long SourceStart, long RangeLength) {
 /// <param name="Start"></param>
 /// <param name="End"></param>
 public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> where T : INumber<T> {
-    public T Length { get => End - Start; }
+    public T Length { get; } = End - Start;
     public bool Contains(T value) => value >= Start && value < End;
     public bool Contains(Range<T> other) => Start <= other.Start && other.End <= End;
     public bool Intersects(Range<T> other) => Start < other.End && End > other.Start;

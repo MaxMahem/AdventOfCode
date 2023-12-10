@@ -1,7 +1,5 @@
 ﻿namespace AdventOfCode._2023;
 
-using System;
-using System.Collections.Generic;
 using CommunityToolkit.HighPerformance;
 
 using AdventOfCode.Helpers;
