@@ -55,7 +55,7 @@ public class PipeSchematic {
         ArgumentNullException.ThrowIfNull(startPipe);
 
         (Width, Height) = (width, height);
-        PipeLocations = pipes.ToDictionary(pipe => pipe.Location);
+        PipeLocations = pipes.ToImmutableDictionary(pipe => pipe.Location);
         StartPipe = startPipe;
 
         _loop = new(() => FindLoop(startPipe));

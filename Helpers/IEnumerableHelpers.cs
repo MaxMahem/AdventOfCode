@@ -23,4 +23,22 @@ public static class IEnumerableHelpers
             }
         }
     }
+
+    /// <summary>Generates all possible combinations pairs of this Enumerable.</summary>
+    /// <remarks>Note this method does not return the pairs in an ordered sequence.</remarks>
+    /// <returns>An enumeration of tuples representing all possible combination pairs.</returns>
+    public static IEnumerable<(T, T)> PairCombinations<T>(this IEnumerable<T> source) {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return GeneratePairCombinations();
+        IEnumerable<(T, T)> GeneratePairCombinations() {
+            var list = source.TryGetNonEnumeratedCount(out int count) ? new List<T>(count) : [];
+
+            foreach (var firstItem in source) {
+                foreach (var secondItem in list) yield return (firstItem, secondItem);
+
+                list.Add(firstItem);
+            }
+        }
+    }
 }
