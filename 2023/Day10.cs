@@ -13,18 +13,18 @@ public class Day10 : AdventBase
     protected override object InternalPart1() => _pipeSchematic!.Loop.Count() / 2;
 
     protected override object InternalPart2() {
-        var loopPoints = _pipeSchematic!.Loop.Select(pipe => pipe.Location).ToList();
+        var loopPoints = _pipeSchematic!.Loop.Select(pipe => pipe.Location).ToImmutableArray();
         var loopArea   = loopPoints.CalculateArea();
         
         // Picks Theorem.
-        var interiorPoints = loopArea - loopPoints.Count / 2 + 1;
+        var interiorPoints = loopArea - loopPoints.Length / 2 + 1;
 
         return (int)interiorPoints;
     }
 }
 
 public static class PointListHelper {
-    /// <summary>Calculates the area ofa polygon using the Shoesting method. 
+    /// <summary>Calculates the area of a polygon using the Shoesting method. 
     /// This assumes the list presents the points in order.</summary>
     /// <param name="points">The list of points, must be in order.</param>
     public static double CalculateArea(this IReadOnlyList<Point> points) {

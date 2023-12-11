@@ -62,4 +62,4 @@ await today.CheckPart2Async();
 
 // await Task.WhenAll(solutions.Select(async day => { await day.CheckPart1Async(); await day.CheckPart2Async(); }));
 
-today.Benchmark();
+// today.Benchmark();
