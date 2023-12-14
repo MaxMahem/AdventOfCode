@@ -68,6 +68,8 @@ public static class GalaxyHelper {
 }
 
 public readonly record struct SpaceExpansion(int Index, LongRange Range) {
+    public long End { get => this.Range.End; }
+    public long Start { get => this.Range.Start; }
     public bool Contains(long value) => Range.Contains(value);
 }
 

@@ -41,6 +41,15 @@ public static class PointListHelper {
     }
 }
 
+public static class PipeEnumerationHelper {
+    public static void Visualize(this IEnumerable<Pipe> pipes) {
+        foreach (var pipe in pipes) {
+            Console.SetCursorPosition(pipe.Location.X, pipe.Location.Y);
+            Console.Write(pipe);
+        }
+    } 
+}
+
 public class PipeSchematic {
     public int Width  { get; }
     public int Height { get; }
@@ -117,6 +126,7 @@ public readonly record struct ConnectedPoints(Point PointA, Point PointB) {
 };
 
 public readonly record struct Pipe(Point Location, Pipe.PipeType Type, ConnectedPoints Connected) {
+    public char BoxSymbol => ToBoxASCII(Type);
     public Pipe(Point location, char symbol) 
         : this(location, ParseSymbol(symbol), ConnectedPoints.GetConnected(location, ParseSymbol(symbol))) { }
 
@@ -153,7 +163,18 @@ public readonly record struct Pipe(Point Location, Pipe.PipeType Type, Connected
         return new(connectedPoints[0], connectedPoints[1]);
     }
 
+    public override string ToString() => this.BoxSymbol.ToString();
+
     public static readonly ImmutableHashSet<char> PipeSymbols = [.. "|-LJ7FS"];
+    private static char ToBoxASCII(PipeType type) => type switch {
+        PipeType.NS => '║',
+        PipeType.EW => '═',
+        PipeType.NE => '╚',
+        PipeType.NW => '╝',
+        PipeType.SW => '╗',
+        PipeType.SE => '╔',
+        _ => throw new InvalidOperationException("Invalid pipe type."),
+    };
 }
 
 public static class PipeSchematicParser

@@ -3,6 +3,31 @@
 using System.Collections;
 
 public static class BitArrayHelper {
+
+    public static BitArray CreateBitArray<T>(this IEnumerable<T> source, Func<T, bool> selector) {
+        int itemCount = source.Count();
+        BitArray bitArray = new(itemCount);
+
+        int arrayIndex = 0;
+        foreach (T item in source) {
+            bitArray[arrayIndex++] = selector(item);
+        }
+
+        return bitArray;
+    }
+
+    public static BitArray CreateBitArray<T>(this ReadOnlySpan<T> source, Func<T, bool> selector) {
+        int itemCount = source.Length;
+        BitArray bitArray = new(itemCount);
+
+        int arrayIndex = 0;
+        foreach (T item in source) {
+            bitArray[arrayIndex++] = selector(item);
+        }
+
+        return bitArray;
+    }
+
     public static IEnumerator<bool> GetTypedEnumerator(this BitArray bitArray) => new BitArrayEnumerator(bitArray);
 
     private class BitArrayEnumerator(BitArray bitArray) : IEnumerator<bool> {

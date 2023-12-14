@@ -49,23 +49,16 @@ public class GhostMap(Directions directions, IEnumerable<Node> nodes) {
 public readonly struct Directions(string directions) : IEnumerable<bool> 
 {
     private readonly BitArray _directions = string.IsNullOrEmpty(directions) ? throw new ArgumentException("Cannot be empty", nameof(directions))
-                                                                             : EncodeDirections(directions);
+                                                                             : directions.CreateBitArray(ParseDirection);
 
     public IEnumerator<bool> GetEnumerator() => _directions.GetTypedEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => _directions.GetTypedEnumerator();
 
-    private static BitArray EncodeDirections(string directions) {
-        BitArray encodedDirections = new(directions.Length);
-        for (int directionIndex = 0; directionIndex < directions.Length; directionIndex++) {
-            bool directionBit = directions[directionIndex] switch {
-                'L' => true,
-                'R' => false,
-                _ => throw new ArgumentException("Invalid direction symbol.", nameof(directions))
-            };
-            encodedDirections[directionIndex] = directionBit;
-        }
-        return encodedDirections;
-    }
+    private static bool ParseDirection(char direction) => direction switch {
+        'L' => true,
+        'R' => false,
+        _ => throw new ArgumentException("Invalid direction symbol.", nameof(direction))
+    };
 }
 
 public record struct Node(NodeKey Key, NodeKey Left, NodeKey Right) { }
