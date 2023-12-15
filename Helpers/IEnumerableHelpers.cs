@@ -4,6 +4,16 @@ using System.Collections.Generic;
 
 public static class IEnumerableHelpers
 {
+    /// <summary>Returns a sequence of <see cref="KeyValuePair{TKey,TValue}"/>
+    /// where the key is the index of the value in the source sequence.</summary>
+    /// <param name="startIndex">First index in the sequence, defaults to 0.</param>
+    /// <remarks>This operator uses deferred execution.</remarks>
+
+    public static IEnumerable<KeyValuePair<int, TSource>> Index<TSource>(this IEnumerable<TSource> source, int startIndex = 0) {
+        ArgumentNullException.ThrowIfNull(source);
+        return source.Select((item, index) => new KeyValuePair<int, TSource>(startIndex + index, item));
+    }
+
     public static IEnumerable<TResult> Pairwise<TSource, TResult>(this IEnumerable<TSource> source, Func<TSource, TSource, TResult> resultSelector) {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(resultSelector);
@@ -41,4 +51,6 @@ public static class IEnumerableHelpers
             }
         }
     }
+
+    public static string StringConcat(this IEnumerable<char> chars) => string.Concat(chars);
 }

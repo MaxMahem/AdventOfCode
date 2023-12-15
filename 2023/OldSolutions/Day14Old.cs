@@ -4,7 +4,7 @@ using AdventOfCode.Helpers;
 
 using IntPoint = Helpers.Point<int>;
 
-public class Day15 : AdventBase
+public class DayOld14 : AdventBase
 {
     SatDishRockMapOld? _dishRockMap;
 

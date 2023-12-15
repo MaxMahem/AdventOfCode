@@ -4,7 +4,7 @@ using CommunityToolkit.HighPerformance;
 
 using AdventOfCode.Helpers;
 
-using IntPoint = Helpers.Point<int>;
+using Point = Helpers.Point<int>;
 
 public class Day14 : AdventBase
 {
@@ -34,7 +34,7 @@ public class SatDishMap {
         Boundary = new(width, height, 0, 0);
     }
 
-    private SatDishMap(IReadOnlyDictionary<IntPoint, IRock> rockMap, Rectangle<int> boundary) {
+    private SatDishMap(IReadOnlyDictionary<Point, IRock> rockMap, Rectangle<int> boundary) {
         this.Rocks    = rockMap.Values;
         this.Boundary = boundary;
     }
@@ -67,9 +67,12 @@ public class SatDishMap {
     public SatDishMap TiltS() => Tilt(South, Rocks.OrderByDescending(rock => rock.Location.Y));
     public SatDishMap TiltE() => Tilt(East,  Rocks.OrderByDescending(rock => rock.Location.X));
 
-
-    public SatDishMap Tilt(IntPoint direction, IEnumerable<IRock> rockIteration) {
-        Dictionary<IntPoint, IRock> newMap = [];
+    /// <summary>Returns a new the map after the map has been tilited in <paramref name="direction"/></summary>
+    /// <param name="direction">The directions rocks should move in. A unit step in a cardinal direction.</param>
+    /// <param name="rockIteration">The order to iterate the rocks in. Needs to happen from the tilt border to the other side.</param>
+    /// <returns>A new <see cref="SatDishMap"/> with the rocks shifted to their new positions.</returns>
+    private SatDishMap Tilt(Point direction, IEnumerable<IRock> rockIteration) {
+        Dictionary<Point, IRock> newMap = [];
 
         foreach (var rock in rockIteration) {
             switch (rock) {
@@ -88,7 +91,7 @@ public class SatDishMap {
 
         // moves the rock to the next valid location in the new map.
         RollingRock Roll(RollingRock rock) {
-            (IntPoint nextLocation, IntPoint currentLocation) = (rock.Location + direction, rock.Location);
+            (Point nextLocation, Point currentLocation) = (rock.Location + direction, rock.Location);
             while (!newMap.ContainsKey(nextLocation) && Boundary.ContainsPoint(nextLocation)) {
                 (nextLocation, currentLocation) = (currentLocation + direction, nextLocation);
             }
@@ -116,10 +119,10 @@ public class SatDishMap {
         return cycledMap;
     }
 
-    private static IntPoint North = new(0, -1);
-    private static IntPoint South = new(0, +1);
-    private static IntPoint East  = new(+1, 0);
-    private static IntPoint West  = new(-1, 0);
+    private static Point North = new(0, -1);
+    private static Point South = new(0, +1);
+    private static Point East  = new(+1, 0);
+    private static Point West  = new(-1, 0);
 
     private static void MapToBuffer(Span<char> buffer, SatDishMap state) {
         var rockDict = state.Rocks.ToImmutableDictionary(rock => rock.Location);
@@ -141,15 +144,18 @@ public class SatDishMap {
     const int BYTE_SIZE = sizeof(byte) * 8;
 }
 
-public interface IRock {
-    public IntPoint Location { get; }
-    public char Symbol { get; }
+public interface IRock : IGridSymbol {
+    public static IRock Create(char symbol, Point location) => symbol switch {
+        'O' => new RollingRock(location),
+        '#' => new FixedRock(location),
+        _ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unhandled character in input.")
+    };
 }
-public record struct RollingRock(IntPoint Location) : IRock {
-    public readonly char Symbol { get; } = 'O';
+public record struct RollingRock(Point Location) : IRock {
+    public readonly char Symbol => 'O';
 }
-public record struct FixedRock(IntPoint Location) : IRock {
-    public readonly char Symbol { get; } = '#';
+public record struct FixedRock(Point Location) : IRock {
+    public readonly char Symbol => '#';
 }
 
 public static class SatDishMapParser
@@ -175,12 +181,8 @@ public static class SatDishMapParser
                 index += hitIndex;
                 char symbol = line[index];
 
-                IntPoint location = new(index, y);
-                rocks.Add(symbol switch {
-                    'O' => new RollingRock(location),
-                    '#' => new FixedRock(location),
-                    _   => throw new ArgumentOutOfRangeException(nameof(input), symbol, "Unhandled character in input.")
-                });
+                Point location = new(index, y);
+                rocks.Add(IRock.Create(symbol, location));
 
                 index += 1;
             }
@@ -189,6 +191,4 @@ public static class SatDishMapParser
 
         return new SatDishMap(rocks, width, y);
     }
-
-    public readonly static IReadOnlySet<char> ValidCharacters = "#O".ToImmutableHashSet();
 }

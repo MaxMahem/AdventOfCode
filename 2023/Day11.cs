@@ -2,8 +2,8 @@
 
 namespace AdventOfCode._2023;
 
-using LongPoint = Point<long>;
-using LongRange = Range<long>;
+using Point = Point<long>;
+using Range = Range<long>;
 
 public class Day11 : AdventBase
 {
@@ -56,9 +56,9 @@ public class GalaxyMap {
     }
 }
 
-public readonly record struct Galaxy(LongPoint Location, Guid Guid) {
-    public Galaxy(long x, long y)     : this(new LongPoint(x, y)) { }
-    public Galaxy(LongPoint location) : this(location, Guid.NewGuid()) { }
+public readonly record struct Galaxy(Point Location, Guid Guid) {
+    public Galaxy(long x, long y) : this(new Point(x, y)) { }
+    public Galaxy(Point location) : this(location, Guid.NewGuid()) { }
 }
 
 public static class GalaxyHelper {
@@ -67,8 +67,8 @@ public static class GalaxyHelper {
         Math.Abs(galaxyPair.Item1.Location.Y - galaxyPair.Item2.Location.Y);
 }
 
-public readonly record struct SpaceExpansion(int Index, LongRange Range) {
-    public long End { get => this.Range.End; }
+public readonly record struct SpaceExpansion(int Index, Range Range) {
+    public long End   { get => this.Range.End; }
     public long Start { get => this.Range.Start; }
     public bool Contains(long value) => Range.Contains(value);
 }
@@ -122,7 +122,7 @@ public static class GalaxyMapParser {
                 expansionIndexX.Remove(index);
                 expansionIndexY.Remove(y);
 
-                LongPoint location = new(index, y);
+                Point location = new(index, y);
                 galaxies.Add(new(location));
 
                 index += 1;

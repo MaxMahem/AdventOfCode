@@ -1,8 +1,9 @@
 ﻿namespace AdventOfCode._2023;
 
 using AdventOfCode.Helpers;
+
 using Sprache;
-using System.Text;
+
 using CacheDict = Dictionary<(int, int), long>;
 
 public class Day12 : AdventBase

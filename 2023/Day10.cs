@@ -1,6 +1,7 @@
 ﻿namespace AdventOfCode._2023;
 
-using System.Drawing;
+using AdventOfCode.Helpers;
+using Point = Helpers.Point<int>;
 
 public class Day10 : AdventBase
 {
@@ -41,18 +42,8 @@ public static class PointListHelper {
     }
 }
 
-public static class PipeEnumerationHelper {
-    public static void Visualize(this IEnumerable<Pipe> pipes) {
-        foreach (var pipe in pipes) {
-            Console.SetCursorPosition(pipe.Location.X, pipe.Location.Y);
-            Console.Write(pipe);
-        }
-    } 
-}
-
 public class PipeSchematic {
-    public int Width  { get; }
-    public int Height { get; }
+    public Rectangle<int> Boundary { get; }
     public IReadOnlyDictionary<Point, Pipe> PipeLocations { get; }
     public Pipe StartPipe { get; }
     public IEnumerable<Pipe> Loop => _loop.Value;
@@ -63,9 +54,9 @@ public class PipeSchematic {
         ArgumentNullException.ThrowIfNull(pipes);
         ArgumentNullException.ThrowIfNull(startPipe);
 
-        (Width, Height) = (width, height);
+        Boundary      = new(width, height, 0, 0);
         PipeLocations = pipes.ToImmutableDictionary(pipe => pipe.Location);
-        StartPipe = startPipe;
+        StartPipe     = startPipe;
 
         _loop = new(() => FindLoop(startPipe));
     }
@@ -125,8 +116,8 @@ public readonly record struct ConnectedPoints(Point PointA, Point PointB) {
     }
 };
 
-public readonly record struct Pipe(Point Location, Pipe.PipeType Type, ConnectedPoints Connected) {
-    public char BoxSymbol => ToBoxASCII(Type);
+public readonly record struct Pipe(Point Location, Pipe.PipeType Type, ConnectedPoints Connected) : IGridSymbol {
+    public char Symbol => ToBoxASCII(Type);
     public Pipe(Point location, char symbol) 
         : this(location, ParseSymbol(symbol), ConnectedPoints.GetConnected(location, ParseSymbol(symbol))) { }
 
@@ -139,7 +130,7 @@ public readonly record struct Pipe(Point Location, Pipe.PipeType Type, Connected
         return new(location, pipeType, connections.Value);
     }
 
-    public enum PipeType { NS, EW, NE, NW, SW, SE, Start, }
+    public enum PipeType { NS, EW, NE, NW, SW, SE }
 
     public Point Navigate(Point from) => this.Connected.GetCorresponding(from);
 
@@ -150,7 +141,6 @@ public readonly record struct Pipe(Point Location, Pipe.PipeType Type, Connected
         'J' => PipeType.NW,
         '7' => PipeType.SW,
         'F' => PipeType.SE,
-        'S' => PipeType.Start,
         _ => throw new ArgumentException("Invalid pipe symbol.", nameof(symbol)),
     };
 
@@ -163,7 +153,7 @@ public readonly record struct Pipe(Point Location, Pipe.PipeType Type, Connected
         return new(connectedPoints[0], connectedPoints[1]);
     }
 
-    public override string ToString() => this.BoxSymbol.ToString();
+    public override string ToString() => this.Symbol.ToString();
 
     public static readonly ImmutableHashSet<char> PipeSymbols = [.. "|-LJ7FS"];
     private static char ToBoxASCII(PipeType type) => type switch {

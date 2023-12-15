@@ -1,14 +1,4 @@
-﻿string testData14 =
-@"O....#....
-O.OO#....#
-.....##...
-OO.#O....O
-.O.....O#.
-O.#..O.#.#
-..O..#O..O
-.......O..
-#....###..
-#OO..#....";
+﻿using System.Threading.Tasks;
 
 string testData13 = 
 @"#.##..##.
@@ -28,11 +18,11 @@ string testData13 =
 #....#..#";
 
 var solutions = new AdventSolutions();
-var today = solutions.GetDay(2023, 14);
+var today = solutions.GetDay(2023, 15);
 
 await today.DownloadInputAsync();
 
-// today.SetTestInput(testData14);
+// today.SetTestInput(testData15);
 // today.Part1();
 // today.Part2();
 

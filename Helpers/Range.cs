@@ -3,7 +3,7 @@
 /// <summary>A generic Range. Uses an [start, end) definition.</summary>
 /// <param name="Start"></param>
 /// <param name="End"></param>
-public readonly record struct Range<T>(T Start, T End) where T : INumber<T>
+public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> where T : INumber<T>
 {
     public T Length { get; } = End - Start;
     public bool Contains(T value) => value >= Start && value < End;
