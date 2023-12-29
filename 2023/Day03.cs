@@ -113,31 +113,26 @@ public class Schematic(int width, int height, IEnumerable<IPart> parts)
     }
 }
 
-public abstract record AbstractPart<T>(T Data, Point Location, Guid Guid) : IPart<T> where T : notnull
-{
+public abstract record AbstractPart<T>(T Data, Point Location, Guid Guid) : IPart<T> where T : notnull {
     object IPart.Data => this.Data;
     public abstract int Length { get; }
 }
-public record PartNumber(int Data, Point Location, Guid Guid) : AbstractPart<int>(Data, Location, Guid)
-{
+public record PartNumber(int Data, Point Location, Guid Guid) : AbstractPart<int>(Data, Location, Guid) {
     public PartNumber(int data, Point location) : this(data, location, Guid.NewGuid()) { }
     public override int Length => Data.DigitCount();
 }
-public record PartSymbol(char Data, Point Location, Guid Guid) : AbstractPart<char>(Data, Location, Guid)
-{
+public record PartSymbol(char Data, Point Location, Guid Guid) : AbstractPart<char>(Data, Location, Guid) {
     public PartSymbol(char symbol, Point location) : this(symbol, location, Guid.NewGuid()) { }
     public override int Length => 1;
 }
 
-public interface IPart
-{
-    object Data { get; }
+public interface IPart {
+    object Data    { get; }
     Point Location { get; }
-    int Length { get; }
-    Guid Guid { get; }
+    int Length     { get; }
+    Guid Guid      { get; }
 }
 
-public interface IPart<T> : IPart
-{
+public interface IPart<T> : IPart {
     new T Data { get; }
 }

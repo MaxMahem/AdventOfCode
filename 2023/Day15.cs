@@ -8,17 +8,17 @@ using Lens = (string Label, int FocalLength);
 
 public class Day15 : AdventBase
 {
-    IEnumerable<InitializationStep>? _intializationSequence;
+    IEnumerable<InitializationStep> _intializationSequence = Enumerable.Empty<InitializationStep>();
     readonly LensLibrary _lensLibrary = new();
 
     protected override void InternalOnLoad() {
-        _intializationSequence = InitializationSequenceParser.Parse(Input.Text).ToImmutableArray();
+        _intializationSequence = [.. Input.Text.AsSpan().Trim().Tokenize(',')];
     }
 
-    protected override object InternalPart1() => _intializationSequence!.Sum(hash => hash.Hash);
+    protected override object InternalPart1() => _intializationSequence.Sum(hash => hash.StepHash);
 
     protected override object InternalPart2() {
-        foreach (var step in _intializationSequence!) {
+        foreach (var step in _intializationSequence) {
             _lensLibrary.ApplyStep(step);
         }
         return _lensLibrary.Power;
@@ -27,7 +27,7 @@ public class Day15 : AdventBase
 
 public class LensLibrary {
     public IReadOnlyList<LensBox> LensBoxes { get; } 
-        = Enumerable.Range(0, 256).Select(id => new LensBox(id)).ToImmutableArray();
+        = Enumerable.Range(0, byte.MaxValue + 1).Select(id => new LensBox((byte)id)).ToImmutableArray();
 
     public bool ApplyStep(InitializationStep step) => step switch {
             RemoveStep            => LensBoxes[step.BoxId].RemoveLens(step.Label),
@@ -38,11 +38,11 @@ public class LensLibrary {
     public int Power => this.LensBoxes.Sum(lensBox => lensBox.Power);
 }
 
-public readonly struct LensBox(int id) {
-    readonly IList<Lens> _lenses = [];
-    public int BoxId { get; } = id;
+public readonly struct LensBox(byte id) {
+    readonly List<Lens> _lenses = [];
+    public byte BoxId { get; } = id;
     
-    /// <summary>Power of all the lenses in the box. The BoxId factor is constant so has been factored out of the aggregate.</summary>
+    // The BoxId factor is constant so has been factored out of the aggregate.
     public readonly int Power => _lenses.Index(1).Aggregate(0, (power, kvp) => power + kvp.Value.FocalLength * kvp.Key) * (this.BoxId + 1);
 
     public bool AddOrReplace(string label, Lens newLens) {
@@ -62,9 +62,12 @@ public record InsertStep(string Sequence) : InitializationStep(Sequence) {
 }
 
 public abstract record InitializationStep(string Sequence) {
-    public byte   Hash  { get; } = Sequence.Aggregate((byte)0, HashChar);
+    public string Sequence { get; } = !string.IsNullOrEmpty(Sequence) ? Sequence : throw new ArgumentException("Cannot be null or empty.", nameof(Sequence));
+    public byte   StepHash => Sequence.Aggregate((byte)0, HashChar);
     public string Label { get; } = Sequence.TakeWhile(char.IsAsciiLetter).StringConcat();
     public byte   BoxId { get; } = Sequence.TakeWhile(char.IsAsciiLetter).Aggregate((byte)0, HashChar);
+
+    public static implicit operator InitializationStep(ReadOnlySpan<char> sequence) => Create(sequence);
 
     public static InitializationStep Create(ReadOnlySpan<char> sequence) => sequence switch {
             [.., '-']               => new RemoveStep(sequence.ToString()),
@@ -74,16 +77,4 @@ public abstract record InitializationStep(string Sequence) {
         };
 
     static byte HashChar(byte hash, char c) => (byte)((hash + c) * 17 % 256);
-}
-
-public static class InitializationSequenceParser {
-    public static IEnumerable<InitializationStep> Parse(string input) {
-        var text = input.AsSpan().Trim();
-        List<InitializationStep> sequences = [];
-        foreach(var span in text.Tokenize(',')) {
-            if (span.ContainsAny('\r', '\n')) throw new ArgumentException("Newlines characters prohibited.", nameof(input));
-            sequences.Add(InitializationStep.Create(span));
-        }
-        return sequences;
-    }
 }

@@ -6,8 +6,7 @@ using Sprache;
 
 using AdventOfCode.Helpers;
 
-public class Day08 : AdventBase
-{
+public class Day08 : AdventBase {
     GhostMap? _map;
 
     protected override void InternalOnLoad() {
@@ -46,13 +45,12 @@ public class GhostMap(Directions directions, IEnumerable<Node> nodes) {
     private Node Step(Node node, bool direction) => direction ? Nodes[node.Left] : Nodes[node.Right];
 }
 
-public readonly struct Directions(string directions) : IEnumerable<bool> 
-{
+public readonly struct Directions(string directions) : IEnumerable<bool> {
     private readonly BitArray _directions = string.IsNullOrEmpty(directions) ? throw new ArgumentException("Cannot be empty", nameof(directions))
                                                                              : directions.CreateBitArray(ParseDirection);
 
     public IEnumerator<bool> GetEnumerator() => _directions.GetTypedEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => _directions.GetTypedEnumerator();
+    IEnumerator IEnumerable.GetEnumerator()  => _directions.GetTypedEnumerator();
 
     private static bool ParseDirection(char direction) => direction switch {
         'L' => true,
@@ -61,7 +59,7 @@ public readonly struct Directions(string directions) : IEnumerable<bool>
     };
 }
 
-public record struct Node(NodeKey Key, NodeKey Left, NodeKey Right) { }
+public record struct Node(NodeKey Key, NodeKey Left, NodeKey Right);
 
 public record struct NodeKey(int Key) {
     public NodeKey(IEnumerable<char> text) : this(Encode(text)) { }
@@ -83,25 +81,24 @@ public record struct NodeKey(int Key) {
         (char)((this.Key >> (8 * index)) & 0xFF) == symbol;
 }
 
-internal static class GhostMapParser
-{
+public class GhostMapParser : SpracheParser {
     private static readonly Parser<NodeKey> MapKeyParser = Parse.LetterOrDigit.Repeat(3).Select(e => new NodeKey(e));
 
     public static readonly Parser<Directions> Directions = Parse.Chars("LR").Until(Parse.LineEnd).Text().Select(s => new Directions(s));
 
     public static readonly Parser<Node> NodeParser =
-        from key in MapKeyParser.Token()
+        from key   in MapKeyParser.Token()
         from equal in Parse.Char('=').Token()
-        from open in Parse.Char('(')
-        from left in MapKeyParser
-        from deliminator in Parse.Char(',').Token()
+        from open  in Parse.Char('(')
+        from left  in MapKeyParser
+        from delim in Parse.Char(',').Token()
         from right in MapKeyParser
         from close in Parse.Char(')')
-        from eol in Parse.LineEnd.Optional()
+        from eol   in Parse.LineEnd.Optional()
         select new Node(key, left, right);
 
     public static readonly Parser<GhostMap> MapParser =
         from directions in Directions
-        from nodes in NodeParser.XMany()
+        from nodes      in NodeParser.XMany()
         select new GhostMap(directions, nodes);
 }

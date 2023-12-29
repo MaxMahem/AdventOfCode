@@ -56,23 +56,21 @@ public static class BoxSetExtensions {
 }
 public enum BoxColor { Red, Green, Blue }
 
-internal static class GameParser
-{
+public class GameParser : SpracheParser {
     static readonly Parser<char> BoxSeparator = Parse.Char(',');
     static readonly Parser<char> SetSeparator = Parse.Char(';');
     static readonly Parser<char> IdSeperator = Parse.Char(':');
-    static readonly Parser<int> NumberParser = Parse.Number.Select(int.Parse);
     
     public static readonly Parser<BoxColor> Color
         = Parse.Letter.AtLeastOnce().Text().Select(GetBoxColor);
     
     public static readonly Parser<int> GameId = 
         from identifier in Parse.String("Game").Token()
-        from id in NumberParser
+        from id in IntParser
         select id;
 
     public static readonly Parser<KeyValuePair<BoxColor, int>> BoxCount =
-        from count in NumberParser.Token()
+        from count in IntParser.Token()
         from color in Color.Token()
         select new KeyValuePair<BoxColor, int>(color, count);
 

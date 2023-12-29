@@ -132,32 +132,29 @@ public static class RangeExtensions {
     }
 }
 
-internal static class SeedMapParser
-{
-    static readonly Parser<long> NumberParser = Parse.Number.Select(long.Parse);
-
+public class SeedMapParser : SpracheParser {
     public static readonly Parser<IEnumerable<long>> SeedIds =
         from identifier in Parse.String("seeds:").Token()
-        from id in NumberParser.Token().XMany()
+        from id         in LongParser.Token().XMany()
         select id;
 
     public static readonly Parser<RangeMapping> MapRange =
-        from destRangeStart in NumberParser.Token()
-        from srcRangeStart in NumberParser.Token()
-        from rangeLength in NumberParser.Token()
+        from destRangeStart in LongParser.Token()
+        from srcRangeStart  in LongParser.Token()
+        from rangeLength    in LongParser.Token()
         select new RangeMapping(destRangeStart, srcRangeStart, rangeLength);
 
     public static readonly Parser<SeedMap> Map =
-        from fromName in Parse.Identifier(Parse.Letter, Parse.Letter)
-        from to in Parse.String("-to-")
-        from toName in Parse.Identifier(Parse.Letter, Parse.Letter).Token()
-        from mapBreak in Parse.String("map:")
-        from eol in Parse.LineEnd
+        from fromName  in Parse.Identifier(Parse.Letter, Parse.Letter)
+        from to        in Parse.String("-to-")
+        from toName    in Parse.Identifier(Parse.Letter, Parse.Letter).Token()
+        from mapBreak  in Parse.String("map:")
+        from eol       in Parse.LineEnd
         from mapRanges in MapRange.XMany()
         select new SeedMap(fromName, toName, mapRanges);
 
     public static readonly Parser<Almanac> Almanac =
         from seeds in SeedIds
-        from maps in Map.XMany().End()
+        from maps  in Map.XMany().End()
         select new Almanac(seeds, maps);
 }

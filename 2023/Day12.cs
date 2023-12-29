@@ -32,57 +32,52 @@ public class SpringMaintanceRecord(IEnumerable<int> springSizes, string springRe
 
     public long FindCombinations() {
         CacheDict cache = [];
-        return Solve(this.SpringRecord.AsSpan(), this.SpringSizes.ToArray().AsSpan());
+        return Dispatch(this.SpringRecord.AsSpan(), this.SpringSizes.ToArray().AsSpan());
 
-        long Solve(ReadOnlySpan<char> maintianceRecord, ReadOnlySpan<int> springSizes) {
-            switch (maintianceRecord) {
-                case []:
-                    return springSizes.Length > 0 ? 0 : 1;                               // If no more spring sizes when pattern empty, then a valid combination found.
-                case ['.', ..]:
-                    return CacheAndSolve(maintianceRecord.Trim('.'), springSizes);       // consume any following dots and recurse.
-                case ['?', ..]:                                                          // for ? case, recurse as a dot and a hash
-                    return CacheAndSolve(['#', .. maintianceRecord[1..]], springSizes) + // prepend hash, skip the first character and pass the remainding pattern.
-                           CacheAndSolve(maintianceRecord[1..].Trim('.'), springSizes);  // skip the first character and any following dots, and pass the remainding pattern.
-                case ['#', ..]:
-                    if (springSizes.Length == 0) return 0; // if no more numbers, fail.
-                    int nextSpringSize = springSizes[0];
+        long Dispatch(ReadOnlySpan<char> maintRecord, ReadOnlySpan<int> springSizes) => maintRecord switch {
+            []        => CheckRecordEnd(springSizes),
+            ['.', ..] => CacheAndSolve(maintRecord.Trim('.'), springSizes),       // consume any following dots and recurse.
+            ['?', ..] => CacheAndSolve(['#', .. maintRecord[1..]], springSizes) + // for ? case, recurse as a dot and a hash
+                         CacheAndSolve(maintRecord[1..].Trim('.'), springSizes),  
+            ['#', ..] => CheckLiveSpring(maintRecord, springSizes),
+            _ => throw new InvalidOperationException("Invalid pattern."),
+        };
 
-                    // find out how much space remains for the next spring. If bigger than the next spring, fail.
-                    var possibleSpringSpace = maintianceRecord.IndexOfAnyExcept('?', '#');
-                    possibleSpringSpace = possibleSpringSpace == -1 ? maintianceRecord.Length : possibleSpringSpace;
-                    if (nextSpringSize > possibleSpringSpace) return 0;
+        // If no more spring sizes when pattern empty, then a valid combination found.
+        long CheckRecordEnd(ReadOnlySpan<int> springSizes) => springSizes.Length > 0 ? 0 : 1;
 
-                    // check if this spring will consume the rest of the space, if so, apply the end check above.
-                    // this combined with the above check ensures that pattern is at least one longer than current spring size.
-                    if (nextSpringSize == maintianceRecord.Length) return springSizes[1..].Length > 0 ? 0 : 1;
+        long CheckLiveSpring(ReadOnlySpan<char> maintRecord, ReadOnlySpan<int> springSizes) {
+            if (springSizes.Length == 0) return 0; // if no more springs, fail.
+            int currentSpring = springSizes[0];
 
-                    // if next space is a live spring this combination is invalid.
-                    if (maintianceRecord[nextSpringSize] == '#') return 0;
+            // Check if enough space remains for the spring.
+            var possibleSpace = maintRecord.IndexOfAnyExcept('?', '#');
+            possibleSpace = possibleSpace == -1 ? maintRecord.Length : possibleSpace;
+            if (currentSpring > possibleSpace) return 0;
 
-                    // all checks pass, this pattern is valid, consume spring and pattern and recurse.
-                    return CacheAndSolve(maintianceRecord[(nextSpringSize + 1)..], springSizes[1..]);
-                default:
-                    throw new InvalidOperationException("Invalid pattern."); // should never get here.
-            }
+            if (currentSpring == maintRecord.Length) return CheckRecordEnd(springSizes[1..]);
+
+            // the above two checks ensure maintianceRecord is bigger than currentSpring.
+            // if next space after the springSize is a live spring this combination is invalid.
+            if (maintRecord[currentSpring] == '#') return 0;
+
+            // all checks pass, this pattern is valid, consume spring and pattern and recurse.
+            return CacheAndSolve(maintRecord[(currentSpring + 1)..], springSizes[1..]);
         }
 
-        // Engine for memoization. Before solving each result is checked against the cache to see if a result already exists.
-        // If it does, that is returned, otherwise, that result is solved, cached, and returned.
         long CacheAndSolve(ReadOnlySpan<char> pattern, ReadOnlySpan<int> springSizes) {
             var key = (pattern.Length, springSizes.Length);
             if (cache.TryGetValue(key, out var result)) return result;
 
-            cache[key] = Solve(pattern, springSizes);
+            cache[key] = Dispatch(pattern, springSizes);
             return cache[key];
         }
     }
 }
 
-internal static class SpringMaintanceRecordParser {
-    static readonly Parser<int> NumberParser = Parse.Number.Select(int.Parse);
-
+public class SpringMaintanceRecordParser : SpracheParser {
     public static readonly Parser<IEnumerable<int>> SpringSizes =
-        NumberParser.DelimitedBy(Parse.Char(','));
+        IntParser.DelimitedBy(Parse.Char(','));
 
     public static readonly Parser<string> SpringRecord =
         Parse.Chars("?#.").XMany().Text();

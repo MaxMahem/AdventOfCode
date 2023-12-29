@@ -4,7 +4,8 @@ using CommunityToolkit.HighPerformance;
 
 using AdventOfCode.Helpers;
 
-using Point = Helpers.Point<int>;
+using Point     = Helpers.Point<int>;
+using Direction = Helpers.Direction<int>;
 
 public class Day14 : AdventBase
 {
@@ -62,10 +63,10 @@ public class SatDishMap {
         return string.Create(bufferSize, this, MapToBuffer);
     }
 
-    public SatDishMap TiltN() => Tilt(North, Rocks.OrderBy(rock => rock.Location.Y));
-    public SatDishMap TiltW() => Tilt(West,  Rocks.OrderBy(rock => rock.Location.X));
-    public SatDishMap TiltS() => Tilt(South, Rocks.OrderByDescending(rock => rock.Location.Y));
-    public SatDishMap TiltE() => Tilt(East,  Rocks.OrderByDescending(rock => rock.Location.X));
+    public SatDishMap TiltN() => Tilt(Direction.North, Rocks.OrderBy(rock => rock.Location.Y));
+    public SatDishMap TiltW() => Tilt(Direction.West,  Rocks.OrderBy(rock => rock.Location.X));
+    public SatDishMap TiltS() => Tilt(Direction.South, Rocks.OrderByDescending(rock => rock.Location.Y));
+    public SatDishMap TiltE() => Tilt(Direction.East,  Rocks.OrderByDescending(rock => rock.Location.X));
 
     /// <summary>Returns a new the map after the map has been tilited in <paramref name="direction"/></summary>
     /// <param name="direction">The directions rocks should move in. A unit step in a cardinal direction.</param>
@@ -119,11 +120,6 @@ public class SatDishMap {
         return cycledMap;
     }
 
-    private static Point North = new(0, -1);
-    private static Point South = new(0, +1);
-    private static Point East  = new(+1, 0);
-    private static Point West  = new(-1, 0);
-
     private static void MapToBuffer(Span<char> buffer, SatDishMap state) {
         var rockDict = state.Rocks.ToImmutableDictionary(rock => rock.Location);
         for (int y = 0, offset = 0; y < state.Boundary.Height; y++) {
@@ -158,8 +154,7 @@ public record struct FixedRock(Point Location) : IRock {
     public readonly char Symbol => '#';
 }
 
-public static class SatDishMapParser
-{
+public static class SatDishMapParser {
     public static SatDishMap Parse(string input) {
         ArgumentException.ThrowIfNullOrWhiteSpace(input);
 

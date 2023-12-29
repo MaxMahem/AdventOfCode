@@ -35,7 +35,7 @@ public readonly record struct RaceData(long Time, long Distance) {
     }
 
     // note that distance is + 1 because the wining time must be *past* the distance.
-    public (long endHold, long startHold) MinimumWinningHolds { get; } = CalculateMinimumHold(Time, Distance + 1);
+    public (long endHold, long startHold) MinimumWinningHolds => CalculateMinimumHold(Time, Distance + 1);
         
     /// <summary>The min and max winning hold time can be found using the quadratic equation.</summary>
     public static (long endHold, long startHold) CalculateMinimumHold(long time, long distance)
@@ -47,19 +47,16 @@ public readonly record struct RaceData(long Time, long Distance) {
     }
 }
 
-internal static class RaceDataParser
-{
-    static readonly Parser<int> NumberParser = Parse.Number.Select(int.Parse);
-
+public class RaceDataParser : SpracheParser {
     public static readonly Parser<IEnumerable<int>> Times =
         from identifier in Parse.String("Time:").Token()
-        from times in NumberParser.Token().XMany()
+        from times      in IntParser.Token().XMany()
         select times;
     
     public static readonly Parser<IEnumerable<int>> Distances =
         from identifier in Parse.String("Distance:").Token()
-        from distance in NumberParser.Token().XMany()
-        from eol in Parse.LineEnd.Optional()
+        from distance   in IntParser.Token().XMany()
+        from eol        in Parse.LineEnd.Optional()
         select distance;
 
     public static readonly Parser<IEnumerable<RaceData>> RaceData =

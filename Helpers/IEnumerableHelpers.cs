@@ -1,6 +1,7 @@
 ﻿namespace AdventOfCode.Helpers;
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 
 public static class IEnumerableHelpers
 {
@@ -12,6 +13,25 @@ public static class IEnumerableHelpers
     public static IEnumerable<KeyValuePair<int, TSource>> Index<TSource>(this IEnumerable<TSource> source, int startIndex = 0) {
         ArgumentNullException.ThrowIfNull(source);
         return source.Select((item, index) => new KeyValuePair<int, TSource>(startIndex + index, item));
+    }
+
+    public static IEnumerable<T> WhereNot<T>(this IEnumerable<T> source, Func<T, bool> predicate) {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(predicate);
+        return source.Where(val => !predicate(val));
+    }
+
+    public static IEnumerable<T> FirstAndLast<T>(this IEnumerable<T> source) {
+        ArgumentNullException.ThrowIfNull(source);
+        yield return source.First();
+        yield return source.Last();
+    }
+
+    public static IEnumerable<T> FirstAndLast<T>(this IEnumerable<T> source, Func<T, bool> predicate) {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(predicate);
+        yield return source.First(predicate);
+        yield return source.Last(predicate);
     }
 
     public static IEnumerable<TResult> Pairwise<TSource, TResult>(this IEnumerable<TSource> source, Func<TSource, TSource, TResult> resultSelector) {

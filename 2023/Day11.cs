@@ -122,8 +122,7 @@ public static class GalaxyMapParser {
                 expansionIndexX.Remove(index);
                 expansionIndexY.Remove(y);
 
-                Point location = new(index, y);
-                galaxies.Add(new(location));
+                galaxies.Add(new(index, y));
 
                 index += 1;
             }

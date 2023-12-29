@@ -18,7 +18,7 @@ string testData13 =
 #....#..#";
 
 var solutions = new AdventSolutions();
-var today = solutions.GetDay(2023, 15);
+var today = solutions.GetDay(2023, 1);
 
 await today.DownloadInputAsync();
 

@@ -1,115 +1,54 @@
 ﻿namespace AdventOfCodeMax._2023;
 
+using System.Text.RegularExpressions;
+using CalibrationValueGroup = IReadOnlyList<CalibrationValue>;
+
 public class Day01 : AdventBase
 {
-    protected override object InternalPart1() {
-        // var enumerator = Input.Text.GetEnumerator();
-        int sum = 0;
-        int resultDigit;
-        int index = -1;
+    IEnumerable<CalibrationValueGroup>? _calibrationValues;
 
-        do {
-            int firstDigit = GetNextDigit(Input.Text, ref index);
-
-            // AoC code does not appear to have any cases with *no* digits in a line, but handle that anyways.
-            if (firstDigit == 0) continue;
-
-            // secondDigit is firstDigit if no other digit is found.
-            int secondDigit = firstDigit;
-
-            // step through all remaining digits until end of line
-            while ((resultDigit = GetNextDigit(Input.Text, ref index)) != 0) {
-                // if a new digit is found, it becomes the second digit, otherwise we keep the old one.
-                secondDigit = resultDigit != 0 ? resultDigit : secondDigit;
-            }
-
-            sum += firstDigit * 10 + secondDigit;
-        } while (++index < Input.Text.Length);
-        return sum;
+    protected override void InternalOnLoad() {
+        _calibrationValues = CalibrationValueParser.Parse(Input.Text);
     }
 
-    // Gets the Next Digit, or 0 if EoL.
-    static int GetNextDigit(string text, ref int index) {
-        char c;
-        while ((++index < text.Length) && (c = text[index]) != '\r') {
-            if (char.IsAsciiDigit(c)) return c - '0';
-        }
-        return 0;
-    }
+    protected override object InternalPart1() =>
+        _calibrationValues!.Select(group => group.First(value => value.IsNumeric).Digit * 10 + 
+                                            group.Last(value => value.IsNumeric).Digit).Sum();
 
-    protected override object InternalPart2() {
-        // wordsMatchedLetters keeps track of how many matching letters have been seen in every word
-        Span<int> wordsMatchedLetters = stackalloc int[WordNumbers.Length];
-        int sum = 0;
-        int resultDigit;
-        int index = -1;
+    protected override object InternalPart2() =>
+        _calibrationValues!.Select(group => group[0].Digit * 10 + group[^1].Digit).Sum();
+}
 
-        do {
-            int firstDigit = GetNextDigit(Input.Text, ref index, wordsMatchedLetters);
+public readonly record struct CalibrationValue(int Digit, bool IsNumeric);
 
-            // AoC code does not appear to have any cases with *no* digits in a line, but handle that anyways.
-            if (firstDigit == 0) continue;
+public static class CalibrationValueParser {
+    public static IEnumerable<CalibrationValueGroup> Parse(string input) {
+        List<CalibrationValueGroup> groups = new(1000);
 
-            // secondDigit is firstDigit if no other digit is found.
-            int secondDigit = firstDigit;
+        foreach (var line in input.AsSpan().EnumerateLines()) {
+            var group = new List<CalibrationValue>(10);
+            for (var index = 0; index < line.Length; index++) {
+                // check digit case
+                char character = line[index];
+                if (char.IsAsciiDigit(character))
+                    group.Add(new CalibrationValue(character - '0', IsNumeric: true));
 
-            // step through all remaining digits until end of line
-            while ((resultDigit = GetNextDigit(Input.Text, ref index, wordsMatchedLetters)) != 0) {
-                // if a digit is found, update the second digit. If no digit found, keep the same digit.
-                secondDigit = resultDigit != 0 ? resultDigit : secondDigit;
-            }
-
-            sum += firstDigit * 10 + secondDigit;
-        } while (++index < Input.Text.Length);
-
-        return sum;
-    }
-
-    // Gets the Next Digit, or 0 if EoL.
-    private static int GetNextDigit(string text, ref int index, Span<int> wordsMatchedLetters) {
-        var resultDigit = 0;
-
-        while (resultDigit == 0 && ++index < text.Length) {
-            char character = text[index];
-
-            if (char.IsAsciiDigit(character)) return character - '0';
-            if (character == '\r') return 0;
-
-            // letter case. Itterate through all words in our map.
-            for (int wordIndex = 0; wordIndex < WordNumbers.Length; wordIndex++) {
-                string word = WordNumbers[wordIndex].Word;
-                
-                // get how far into the current word a candiate character should match
-                int matchedLetters = wordsMatchedLetters[wordIndex];
-
-                if (word[matchedLetters] == character) {
-                    wordsMatchedLetters[wordIndex]++;
-
-                    // if the word has a number of letters matched equal to the word length, its a digit.
-                    // reset the match counter for it and set it as our return value.
-                    if (word.Length == wordsMatchedLetters[wordIndex]) {
-                        wordsMatchedLetters[wordIndex] = 0;
-
-                        // value is not return here because remaining words need to be checked in case of overlaps
-                        resultDigit = WordNumbers[wordIndex].Digit; 
+                // check words
+                foreach (var (word, number) in NumberWords) {
+                    if (line[index..].StartsWith(word)) {
+                        // advance the index to the end of the matched word - 1 in order to handle overlapping words.
+                        index += word.Length - 2;
+                        group.Add(new CalibrationValue(number, IsNumeric: false));
                     }
                 }
-                // if the current letter didn't match, reset the matched letter count for that word.
-                else {
-                    wordsMatchedLetters[wordIndex] = 0;
-
-                    // check again for matches because the first letter could repeat
-                    matchedLetters = 0;
-                    if (word[matchedLetters] == character)
-                        wordsMatchedLetters[wordIndex]++;
-                }
             }
+            groups.Add(group.ToImmutableArray());
         }
-        return resultDigit;
+
+        return groups.ToImmutableArray();
     }
 
-
-    private static readonly (string Word, int Digit)[] WordNumbers = [
+    private static readonly IEnumerable<(string Word, int Number)> NumberWords = new []{
         ("one",   1),
         ("two",   2),
         ("three", 3),
@@ -119,5 +58,5 @@ public class Day01 : AdventBase
         ("seven", 7),
         ("eight", 8),
         ("nine",  9),
-    ];
+    }.ToImmutableArray();
 }

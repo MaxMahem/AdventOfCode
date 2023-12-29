@@ -1,5 +1,6 @@
 ﻿namespace AdventOfCode._2023;
 
+using AdventOfCode.Helpers;
 using Sprache;
 
 public class Day04 : AdventBase {
@@ -44,22 +45,21 @@ public class TicketPair(int id, IEnumerable<int> scratchNumbers, IEnumerable<int
     public const int WINNING_NUMBER_COUNT = 25;
 }
 
-internal static class ScratchTicketsParser {
-    static readonly Parser<int> NumberParser = Parse.Number.Select(int.Parse);
-    static readonly Parser<char> IdSeperator = Parse.Char(':');
+public class ScratchTicketsParser : SpracheParser {
+    static readonly Parser<char> IdSeperator   = Parse.Char(':');
     static readonly Parser<char> CardSeperator = Parse.Char('|');
 
     public static readonly Parser<int> CardId =
         from identifier in Parse.String("Card").Token()
-        from id in NumberParser
+        from id in IntParser
         select id;
 
     public static readonly Parser<TicketPair> TicketPair =
         from id in CardId
         from colon in IdSeperator
-        from ticketNumbers in NumberParser.Token().Many()
+        from ticketNumbers in IntParser.Token().Many()
         from seperator in CardSeperator
-        from winningNumbers in NumberParser.Token().Many()
+        from winningNumbers in IntParser.Token().Many()
         from eol in Parse.LineEnd.Optional()
         select new TicketPair(id, ticketNumbers, winningNumbers);
 

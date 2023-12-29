@@ -3,8 +3,7 @@
 using AdventOfCode.Helpers;
 using Point = Helpers.Point<int>;
 
-public class Day10 : AdventBase
-{
+public class Day10 : AdventBase {
     PipeSchematic? _pipeSchematic;
 
     protected override void InternalOnLoad() {
@@ -167,8 +166,7 @@ public readonly record struct Pipe(Point Location, Pipe.PipeType Type, Connected
     };
 }
 
-public static class PipeSchematicParser
-{
+public static class PipeSchematicParser {
     public static PipeSchematic ParsePlan(string input) {
         ArgumentNullException.ThrowIfNull(input);
 
