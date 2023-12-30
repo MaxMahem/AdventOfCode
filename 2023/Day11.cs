@@ -2,7 +2,7 @@
 
 namespace AdventOfCode._2023;
 
-using Point = Point<long>;
+using GridPoint = GridPoint<long>;
 using Range = Range<long>;
 
 public class Day11 : AdventBase
@@ -56,9 +56,9 @@ public class GalaxyMap {
     }
 }
 
-public readonly record struct Galaxy(Point Location, Guid Guid) {
-    public Galaxy(long x, long y) : this(new Point(x, y)) { }
-    public Galaxy(Point location) : this(location, Guid.NewGuid()) { }
+public readonly record struct Galaxy(GridPoint Location, Guid Guid) {
+    public Galaxy(long x, long y) : this((x, y)) { }
+    public Galaxy(GridPoint location) : this(location, Guid.NewGuid()) { }
 }
 
 public static class GalaxyHelper {

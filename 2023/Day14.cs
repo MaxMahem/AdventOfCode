@@ -4,8 +4,8 @@ using CommunityToolkit.HighPerformance;
 
 using AdventOfCode.Helpers;
 
-using Point     = Helpers.Point<int>;
-using Direction = Helpers.Direction<int>;
+using GridPoint     = Helpers.GridPoint<int>;
+using GridDirection = Helpers.GridDirection<int>;
 
 public class Day14 : AdventBase
 {
@@ -24,7 +24,7 @@ public class Day14 : AdventBase
 
 public class SatDishMap {
     public IEnumerable<IRock> Rocks { get; }
-    public Rectangle<int> Boundary { get; }
+    public GridRectangle<int> Boundary { get; }
 
     public SatDishMap(IEnumerable<IRock> rocks, int width, int height) {
         ArgumentNullException.ThrowIfNull(rocks);
@@ -35,7 +35,7 @@ public class SatDishMap {
         Boundary = new(width, height, 0, 0);
     }
 
-    private SatDishMap(IReadOnlyDictionary<Point, IRock> rockMap, Rectangle<int> boundary) {
+    private SatDishMap(IReadOnlyDictionary<GridPoint, IRock> rockMap, GridRectangle<int> boundary) {
         this.Rocks    = rockMap.Values;
         this.Boundary = boundary;
     }
@@ -63,17 +63,17 @@ public class SatDishMap {
         return string.Create(bufferSize, this, MapToBuffer);
     }
 
-    public SatDishMap TiltN() => Tilt(Direction.North, Rocks.OrderBy(rock => rock.Location.Y));
-    public SatDishMap TiltW() => Tilt(Direction.West,  Rocks.OrderBy(rock => rock.Location.X));
-    public SatDishMap TiltS() => Tilt(Direction.South, Rocks.OrderByDescending(rock => rock.Location.Y));
-    public SatDishMap TiltE() => Tilt(Direction.East,  Rocks.OrderByDescending(rock => rock.Location.X));
+    public SatDishMap TiltN() => Tilt(GridDirection.North, Rocks.OrderBy(rock => rock.Location.Y));
+    public SatDishMap TiltW() => Tilt(GridDirection.West,  Rocks.OrderBy(rock => rock.Location.X));
+    public SatDishMap TiltS() => Tilt(GridDirection.South, Rocks.OrderByDescending(rock => rock.Location.Y));
+    public SatDishMap TiltE() => Tilt(GridDirection.East,  Rocks.OrderByDescending(rock => rock.Location.X));
 
     /// <summary>Returns a new the map after the map has been tilited in <paramref name="direction"/></summary>
     /// <param name="direction">The directions rocks should move in. A unit step in a cardinal direction.</param>
     /// <param name="rockIteration">The order to iterate the rocks in. Needs to happen from the tilt border to the other side.</param>
     /// <returns>A new <see cref="SatDishMap"/> with the rocks shifted to their new positions.</returns>
-    private SatDishMap Tilt(Point direction, IEnumerable<IRock> rockIteration) {
-        Dictionary<Point, IRock> newMap = [];
+    private SatDishMap Tilt(GridPoint direction, IEnumerable<IRock> rockIteration) {
+        Dictionary<GridPoint, IRock> newMap = [];
 
         foreach (var rock in rockIteration) {
             switch (rock) {
@@ -92,7 +92,7 @@ public class SatDishMap {
 
         // moves the rock to the next valid location in the new map.
         RollingRock Roll(RollingRock rock) {
-            (Point nextLocation, Point currentLocation) = (rock.Location + direction, rock.Location);
+            (GridPoint nextLocation, GridPoint currentLocation) = (rock.Location + direction, rock.Location);
             while (!newMap.ContainsKey(nextLocation) && Boundary.ContainsPoint(nextLocation)) {
                 (nextLocation, currentLocation) = (currentLocation + direction, nextLocation);
             }
@@ -141,16 +141,16 @@ public class SatDishMap {
 }
 
 public interface IRock : IGridSymbol {
-    public static IRock Create(char symbol, Point location) => symbol switch {
+    public static IRock Create(char symbol, GridPoint location) => symbol switch {
         'O' => new RollingRock(location),
         '#' => new FixedRock(location),
         _ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unhandled character in input.")
     };
 }
-public record struct RollingRock(Point Location) : IRock {
+public record struct RollingRock(GridPoint Location) : IRock {
     public readonly char Symbol => 'O';
 }
-public record struct FixedRock(Point Location) : IRock {
+public record struct FixedRock(GridPoint Location) : IRock {
     public readonly char Symbol => '#';
 }
 
@@ -176,7 +176,7 @@ public static class SatDishMapParser {
                 index += hitIndex;
                 char symbol = line[index];
 
-                Point location = new(index, y);
+                GridPoint location = new(index, y);
                 rocks.Add(IRock.Create(symbol, location));
 
                 index += 1;

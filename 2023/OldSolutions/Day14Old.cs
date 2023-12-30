@@ -2,7 +2,7 @@
 
 using AdventOfCode.Helpers;
 
-using IntPoint = Helpers.Point<int>;
+using IntPoint = Helpers.GridPoint<int>;
 
 public class DayOld14 : AdventBase
 {
@@ -22,14 +22,14 @@ public class DayOld14 : AdventBase
 public class SatDishRockMapOld
 {
     public IReadOnlyDictionary<IntPoint, IRock> RockMap { get; }
-    public Rectangle<int> Boundary { get; }
+    public GridRectangle<int> Boundary { get; }
 
     public SatDishRockMapOld(SatDishMap satDishRockMap) {
         this.RockMap  = satDishRockMap.Rocks.ToImmutableDictionary(rock => rock.Location);
         this.Boundary = satDishRockMap.Boundary;
     }
 
-    private SatDishRockMapOld(IReadOnlyDictionary<IntPoint, IRock> rockMap, Rectangle<int> boundary) {
+    private SatDishRockMapOld(IReadOnlyDictionary<IntPoint, IRock> rockMap, GridRectangle<int> boundary) {
         this.RockMap = rockMap;
         this.Boundary = boundary;
     }

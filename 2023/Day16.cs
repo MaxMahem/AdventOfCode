@@ -2,9 +2,9 @@
 
 using AdventOfCode.Helpers;
 
-using Point     = Helpers.Point<int>;
-using Direction = Helpers.Direction<int>;
-using Reflections = IReadOnlyDictionary<Helpers.Direction<int>, IEnumerable<Helpers.Direction<int>>>;
+using GridPoint     = Helpers.GridPoint<int>;
+using GridDirection = Helpers.GridDirection<int>;
+using Reflections = IReadOnlyDictionary<Helpers.GridDirection<int>, IEnumerable<Helpers.GridDirection<int>>>;
 
 public class Day16 : AdventBase
 {
@@ -24,17 +24,17 @@ public class Day16 : AdventBase
 
 }
 
-public class MirrorMap(IEnumerable<Mirror> mirrors, Rectangle<int> boundary) {
-    private readonly IReadOnlyDictionary<Point, Mirror> _mirrorLookup 
+public class MirrorMap(IEnumerable<Mirror> mirrors, GridRectangle<int> boundary) {
+    private readonly IReadOnlyDictionary<GridPoint, Mirror> _mirrorLookup 
         = mirrors.ToImmutableDictionary(mirror => mirror.Location);
 
     public IEnumerable<Mirror> Mirrors { get; } = mirrors;
-    public Rectangle<int> Boundary { get; } = boundary;
+    public GridRectangle<int> Boundary { get; } = boundary;
 
     public int EnergizeGrid(Beam beam) {
         List<Beam>     beamList        = [beam];
         HashSet<Beam>  beamHistory     = [];
-        HashSet<Point> energizedPoints = [];
+        HashSet<GridPoint> energizedPoints = [];
         do {
             for (int beamIndex = beamList.Count - 1; beamIndex >= 0; beamIndex--) {
                 var newBeam = beam.Step();
@@ -58,7 +58,7 @@ public class MirrorMap(IEnumerable<Mirror> mirrors, Rectangle<int> boundary) {
     }
 }
 
-public record struct Beam(Point Location, Direction Direction) {
+public record struct Beam(GridPoint Location, GridDirection Direction) {
     public Beam Step() => this with { Location = this.Location + this.Direction };
 }
 
@@ -71,8 +71,8 @@ public interface IGrid {
     }
 }
 
-public readonly record struct Mirror(Point Location, char Symbol, Reflections Reflections) : IGridSymbol {
-    public static Mirror Create(char symbol, Point location) => new(location, symbol, MirrorReflections[symbol]);
+public readonly record struct Mirror(GridPoint Location, char Symbol, Reflections Reflections) : IGridSymbol {
+    public static Mirror Create(char symbol, GridPoint location) => new(location, symbol, MirrorReflections[symbol]);
 
     public IEnumerable<Beam> Reflect(Beam beam) {
         var newDirections = Reflections[beam.Direction];
@@ -86,29 +86,29 @@ public readonly record struct Mirror(Point Location, char Symbol, Reflections Re
 
     private readonly static IReadOnlyDictionary<char, Reflections> MirrorReflections
         = new Dictionary<char, Reflections>() {
-            { '|',  new Dictionary<Direction, IEnumerable<Direction>>() {
-                { Direction.North, [ Direction.None ] },
-                { Direction.South, [ Direction.None ] },
-                { Direction.East,  [ Direction.North, Direction.South ] },
-                { Direction.West,  [ Direction.North, Direction.South ] },
+            { '|',  new Dictionary<GridDirection, IEnumerable<GridDirection>>() {
+                { GridDirection.North, [ GridDirection.None ] },
+                { GridDirection.South, [ GridDirection.None ] },
+                { GridDirection.East,  [ GridDirection.North, GridDirection.South ] },
+                { GridDirection.West,  [ GridDirection.North, GridDirection.South ] },
             }.ToImmutableDictionary() },
-            { '-',  new Dictionary<Direction, IEnumerable<Direction>>() {
-                { Direction.North, [ Direction.East,  Direction.West  ] },
-                { Direction.South, [ Direction.East,  Direction.West  ] },
-                { Direction.East,  [ Direction.None ] },
-                { Direction.West,  [ Direction.None ] },
+            { '-',  new Dictionary<GridDirection, IEnumerable<GridDirection>>() {
+                { GridDirection.North, [ GridDirection.East,  GridDirection.West  ] },
+                { GridDirection.South, [ GridDirection.East,  GridDirection.West  ] },
+                { GridDirection.East,  [ GridDirection.None ] },
+                { GridDirection.West,  [ GridDirection.None ] },
             }.ToImmutableDictionary() },
-            { '\\', new Dictionary<Direction, IEnumerable<Direction>>() {
-                { Direction.North, [ Direction.West  ] },
-                { Direction.South, [ Direction.East  ] },
-                { Direction.East,  [ Direction.North ] },
-                { Direction.West,  [ Direction.South ] },
+            { '\\', new Dictionary<GridDirection, IEnumerable<GridDirection>>() {
+                { GridDirection.North, [ GridDirection.West  ] },
+                { GridDirection.South, [ GridDirection.East  ] },
+                { GridDirection.East,  [ GridDirection.North ] },
+                { GridDirection.West,  [ GridDirection.South ] },
             }.ToImmutableDictionary() },
-            { '/',  new Dictionary<Direction, IEnumerable<Direction>>() {
-                { Direction.North, [ Direction.East  ] },
-                { Direction.South, [ Direction.West  ] },
-                { Direction.East,  [ Direction.South ] },
-                { Direction.West,  [ Direction.North ] },
+            { '/',  new Dictionary<GridDirection, IEnumerable<GridDirection>>() {
+                { GridDirection.North, [ GridDirection.East  ] },
+                { GridDirection.South, [ GridDirection.West  ] },
+                { GridDirection.East,  [ GridDirection.South ] },
+                { GridDirection.West,  [ GridDirection.North ] },
             }.ToImmutableDictionary() },
     }.ToImmutableDictionary();
 }
@@ -135,7 +135,7 @@ public static class MirrorMapParser {
                 index += hitIndex;
                 char symbol = line[index];
 
-                Point location = new(index, y);
+                GridPoint location = new(index, y);
                 mirrors.Add(Mirror.Create(symbol, location));
 
                 index += 1;

@@ -7,8 +7,8 @@ public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> w
 {
     public T Length { get; } = End - Start;
     public bool Contains(T value) => value >= Start && value < End;
-    public bool Contains(Range<T> other) => Start <= other.Start && other.End <= End;
-    public bool Intersects(Range<T> other) => Start < other.End && End > other.Start;
+    public bool Contains(in Range<T> other) => Start <= other.Start && other.End <= End;
+    public bool Intersects(in Range<T> other) => Start < other.End && End > other.Start;
     public int CompareTo(Range<T> other) => Start.CompareTo(other.Start);
 
     public static implicit operator Range<T>((T start, T end) tuple) => new(tuple.start, tuple.end);
@@ -17,7 +17,7 @@ public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> w
     /// <param name="other">The Range(T) to split this range.</param>
     /// <returns>A tuple with nullable components corresponding to the portions of this range to the left of,
     /// right, of, and inside <paramref name="other"/></returns>
-    public (Range<T>? Left, Range<T>? Inside, Range<T>? Right) Split(Range<T> other) {
+    public (Range<T>? Left, Range<T>? Inside, Range<T>? Right) Split(in Range<T> other) {
 
         if (other.Start >= End) return (this, null, null); // entirely to the left of other range. 
         if (other.End < Start) return (null, null, this); // entirely to the right of other range.
@@ -36,13 +36,13 @@ public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> w
         return (left, inside, right);
     }
 
-    public Range<T> Merge(Range<T> other) {
+    public Range<T> Merge(in Range<T> other) {
         if (!Intersects(other)) throw new ArgumentException("Ranges do not overlap.");
 
         return new Range<T>(T.Min(Start, other.Start), T.Max(End, other.End));
     }
 
-    public bool TryMerge(Range<T> other, out Range<T> mergedRange) {
+    public bool TryMerge(in Range<T> other, out Range<T> mergedRange) {
         if (!Intersects(other)) {
             mergedRange = default;
             return false;
@@ -57,4 +57,21 @@ public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> w
 
     public static bool operator <=(Range<T> left, Range<T> right) => left.CompareTo(right) <= 0;
     public static bool operator >=(Range<T> left, Range<T> right) => left.CompareTo(right) >= 0;
+}
+
+public static class RangeExtensions {
+    public static IEnumerable<Range<T>> Merge<T>(this IEnumerable<Range<T>> ranges) where T : INumber<T> {
+        if (!ranges.Any()) yield break;
+        var sortedRanges = ranges.Order().ToList();
+
+        for (int index = 0; index < sortedRanges.Count - 1; index++) {
+            Range<T> current = sortedRanges[index], next = sortedRanges[index + 1];
+
+            // insert merged range into the next index so it can be possibly merged with the next item.
+            if (current.TryMerge(next, out Range<T> merged)) sortedRanges[index + 1] = merged; 
+            else yield return current;
+        }
+
+        yield return sortedRanges.Last();
+    }
 }

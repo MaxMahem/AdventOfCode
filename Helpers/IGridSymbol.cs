@@ -1,6 +1,6 @@
 ﻿namespace AdventOfCode.Helpers;
 
-using IntPoint = Point<int>;
+using IntPoint = GridPoint<int>;
 
 public interface IGridSymbol
 {

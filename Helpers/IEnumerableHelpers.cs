@@ -9,10 +9,19 @@ public static class IEnumerableHelpers
     /// where the key is the index of the value in the source sequence.</summary>
     /// <param name="startIndex">First index in the sequence, defaults to 0.</param>
     /// <remarks>This operator uses deferred execution.</remarks>
-
     public static IEnumerable<KeyValuePair<int, TSource>> Index<TSource>(this IEnumerable<TSource> source, int startIndex = 0) {
         ArgumentNullException.ThrowIfNull(source);
         return source.Select((item, index) => new KeyValuePair<int, TSource>(startIndex + index, item));
+    }
+
+    public delegate Boolean TryFunc<T, TOut>(T input, out TOut value);
+
+    public static IEnumerable<TOut> SelectWhere<T, TOut>(this IEnumerable<T> source, TryFunc<T, TOut> tryFunc) {
+        foreach (T item in source) {
+            if (tryFunc(item, out TOut value)) {
+                yield return value;
+            }
+        }
     }
 
     public static IEnumerable<T> WhereNot<T>(this IEnumerable<T> source, Func<T, bool> predicate) {

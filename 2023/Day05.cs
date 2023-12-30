@@ -1,29 +1,27 @@
-﻿using AdventOfCode.Helpers;
-
-namespace AdventOfCode._2023;
+﻿namespace AdventOfCode._2023;
 
 using Sprache;
 
 using AdventOfCode.Helpers;
 
-using RangeLong = Range<long>;
+using Range = Helpers.Range<long>;
 
 public class Day05 : AdventBase
 {
     Almanac? almanac;
     protected override void InternalOnLoad() {
-        almanac = SeedMapParser.Almanac.Parse(Input.Text);
+        this.almanac = AlmanacParser.Almanac.Parse(Input.Text);
     }
 
     protected override object InternalPart1() => 
-        almanac!.SeedData.Select(seed => almanac.Maps.Aggregate(seed, (value, map) => map.MapValue(value))).Min();
+        this.almanac!.SeedData.Select(seed => almanac.Maps.Aggregate(seed, (value, map) => map.MapValue(value))).Min();
 
     protected override object InternalPart2() {
-        List<RangeLong> resultRanges = [];
-        foreach (var seedRange in almanac!.SeedRanges) {
-            List<RangeLong> mappedRange = [seedRange];
-            foreach (var map in almanac!.Maps) {
-                mappedRange = mappedRange.Select(map.MapRange).SelectMany(e => e).Merge().ToList();
+        List<Range> resultRanges = [];
+        foreach (var seedRange in this.almanac!.SeedRanges) {
+            Range[] mappedRange = [seedRange];
+            foreach (var map in this.almanac!.Maps) {
+                mappedRange = mappedRange.Select(range => map.MapRange(in range)).SelectMany(e => e).Merge().ToArray();
             }
             resultRanges.AddRange(mappedRange);
         }
@@ -33,10 +31,10 @@ public class Day05 : AdventBase
 
 public class Almanac {
     private readonly ImmutableArray<long> _seedData;
-    public IEnumerable<RangeLong> SeedRanges { get; }
+    public IEnumerable<Range> SeedRanges { get; }
     public IEnumerable<long> SeedData => _seedData; 
-    public IEnumerable<SeedMap> Maps { get; }
-    public Almanac(IEnumerable<long> seedData, IEnumerable<SeedMap> maps) {
+    public IEnumerable<AlmanacValueMap> Maps { get; }
+    public Almanac(IEnumerable<long> seedData, IEnumerable<AlmanacValueMap> maps) {
         ArgumentNullException.ThrowIfNull(seedData);
         ArgumentNullException.ThrowIfNull(maps);
         if (!seedData.Count().IsEven()) throw new ArgumentOutOfRangeException(nameof(seedData), "Elements must be even.");
@@ -47,59 +45,75 @@ public class Almanac {
     }
 
     /// <summary>Pair up the seed data.</summary>
-    private static IEnumerable<RangeLong> PairSeedData(ImmutableArray<long> seedData) {
-        var seedRanges = new RangeLong[seedData.Length / 2];
+    private static IEnumerable<Range> PairSeedData(ImmutableArray<long> seedData) {
+        var seedRanges = new Range[seedData.Length / 2];
         for (int seedIndex = 0; seedIndex < seedData.Length - 1; seedIndex += 2) {
             long start = seedData[seedIndex];
             long end   = seedData[seedIndex + 1] + start;
-            seedRanges[seedIndex/2] = new RangeLong(start, end);
+            seedRanges[seedIndex/2] = new Range(start, end);
         }
         return seedRanges.ToImmutableArray();
     }
 };
 
-public class SeedMap(string fromName, string toName, IEnumerable<RangeMapping> rangeMaps)
-{
+public class AlmanacValueMap(string fromName, string toName, IEnumerable<ValueMap> rangeMaps) {
+    public const int MAX_RANGE_COUNT = 10;
+
     string FromName { get; } = fromName ?? throw new ArgumentNullException(nameof(fromName));
     string ToName   { get; } = toName   ?? throw new ArgumentNullException(nameof(toName));
-    IReadOnlyList<RangeMapping> RangeMaps { get; } = rangeMaps?.OrderBy(map => map.SourceStart).ToImmutableArray()
+    IReadOnlyList<ValueMap> RangeMaps { get; } = rangeMaps?.OrderBy(map => map.Source).ToImmutableArray()
             ?? throw new ArgumentNullException(nameof(rangeMaps));
 
-    public long MapValue(long inValue) {
-        foreach(var range in RangeMaps) {
-            if (range.TryMapValue(inValue, out long outValue)) return outValue;
+    public long MapValue(long value) {
+        foreach (var range in RangeMaps) {
+            if (range.TryMapValue(value, out long mappedValue)) return mappedValue;
         }
-        return inValue;
+        return value;
     }
 
-    public IEnumerable<RangeLong> MapRange(RangeLong inRange) {
-        Queue<RangeLong> ranges = [inRange];
+    /// <summary>Maps a given range against these range maps this class contains. 
+    /// Any portions that do not fall within the range are passed through unmapped.
+    /// Splits and creates new ranges from the input as necessary to do so.</summary>
+    /// <param name="inRange"></param>
+    /// <returns>A list of mapped ranges </returns>
+    public IEnumerable<Range> MapRange(in Range inRange) {
+        StackSpan<Range> inputRanges  = stackalloc Range[MAX_RANGE_COUNT];
+        StackSpan<Range> mappedRanges = stackalloc Range[MAX_RANGE_COUNT * 2];
+        inputRanges.Push(inRange);
         var mapEnumerator = RangeMaps.GetEnumerator();
 
-        // dual enumeration. Range items will reque until they have all been mapped
-        // maps will iterate until finished. Loop ends when either set is exausted. 
-        while (ranges.Count > 0 && mapEnumerator.MoveNext()) {
+        // Dual enumeration. Range items will restack until they have all been mapped
+        // maps will iterate until exhausted. Loop ends when either set is exausted. 
+        // Test order is important here as TryPop has side effects (popping the item)
+        while (mapEnumerator.MoveNext() && inputRanges.TryPop(out Range inputRange)) {
             var currentMap = mapEnumerator.Current;
 
-            // split the range at the front of the que with the current map
-            (RangeLong? splitLeft, RangeLong? splitInside, RangeLong? splitRight) = ranges.Dequeue().Split(currentMap.Source);
-            if (splitLeft   is RangeLong left)  ranges.Enqueue(left);                      // outside portions get enqued to get checked again.
-            if (splitRight  is RangeLong right) ranges.Enqueue(right);                    
-            if (splitInside is RangeLong inside) yield return currentMap.MapRange(inside); // inside portions are mapped and returned.
+            var mappedSplit = currentMap.MapSplit(inputRange);
+            if (mappedSplit.UnmappedL is Range left)   inputRanges.Push(left);      // unmapped portions go back on the stack
+            if (mappedSplit.UnmappedR is Range right)  inputRanges.Push(right);                    
+            if (mappedSplit.Mapped    is Range inside) mappedRanges.Push(inside);
         }
-        // empty and map any remaining items in que (should only be at most one.)
-        while (ranges.TryDequeue(out RangeLong finalRange)) yield return finalRange;
+        // empty any remaining unmapped items to mapped set (should only be at most only two.)
+        while (inputRanges.TryPop(out Range finalRange)) mappedRanges.Push(finalRange);
+        return mappedRanges.ToArray();
     }
 }
 
-public record RangeMapping(long DestStart, long SourceStart, long RangeLength) { 
-    public RangeLong Destination { get; } = new(DestStart,   DestStart   + RangeLength);
-    public RangeLong Source      { get; } = new(SourceStart, SourceStart + RangeLength);
+public class ValueMap(long destStart, long sourceStart, long rangeLength) { 
+    public Range Destination { get; } = new(destStart,   destStart   + rangeLength);
+    public Range Source      { get; } = new(sourceStart, sourceStart + rangeLength);
 
-    public RangeLong MapRange(RangeLong range) {
+    public Range MapRange(in Range range) {
         if (!Source.Contains(range)) throw new ArgumentException("Must be entirely within Source.", nameof(range));
 
-        return new RangeLong(MapValue(range.Start), MapValue(range.End));
+        return new Range(MapValue(range.Start), MapValue(range.End));
+    }
+
+    /// <summary>Maps a given range, splitting it if necessary to do so.</summary>
+    /// <returns>A tuple containing the possible Mapped, and two possible Unmapped portions of the range.</returns>
+    public (Range? Mapped, Range? UnmappedL, Range? UnmappedR) MapSplit(in Range range) {
+        var split = range.Split(Source);
+        return (split.Inside is Range inside ? MapRange(inside) : null, split.Left, split.Right);
     }
 
     public bool TryMapValue(long inValue, out long outValue) {
@@ -112,46 +126,29 @@ public record RangeMapping(long DestStart, long SourceStart, long RangeLength) {
         return true;
     }
 
-    private long MapValue(long inValue) => DestStart - SourceStart + inValue;
+    private long MapValue(long inValue) => Destination.Start - Source.Start + inValue;
 };
 
-public static class RangeExtensions {
-    public static IEnumerable<Range<T>> Merge<T>(this IEnumerable<Range<T>> ranges) where T : INumber<T> {
-        if (!ranges.Any()) yield break;
-        var sortedRanges = ranges.Order().ToList();
-
-        for (int index = 0; index < sortedRanges.Count - 1; index++) {
-            Range<T> current = sortedRanges[index], next = sortedRanges[index + 1];
-
-            // insert merged range into the next index so it can be possibly merged with the next item.
-            if (current.TryMerge(next, out Range<T> merged)) sortedRanges[index + 1] = merged; 
-            else yield return current;
-        }
-
-        yield return sortedRanges.Last();
-    }
-}
-
-public class SeedMapParser : SpracheParser {
+public class AlmanacParser : SpracheParser {
     public static readonly Parser<IEnumerable<long>> SeedIds =
         from identifier in Parse.String("seeds:").Token()
         from id         in LongParser.Token().XMany()
         select id;
 
-    public static readonly Parser<RangeMapping> MapRange =
+    public static readonly Parser<ValueMap> MapRange =
         from destRangeStart in LongParser.Token()
         from srcRangeStart  in LongParser.Token()
         from rangeLength    in LongParser.Token()
-        select new RangeMapping(destRangeStart, srcRangeStart, rangeLength);
+        select new ValueMap(destRangeStart, srcRangeStart, rangeLength);
 
-    public static readonly Parser<SeedMap> Map =
+    public static readonly Parser<AlmanacValueMap> Map =
         from fromName  in Parse.Identifier(Parse.Letter, Parse.Letter)
         from to        in Parse.String("-to-")
         from toName    in Parse.Identifier(Parse.Letter, Parse.Letter).Token()
         from mapBreak  in Parse.String("map:")
         from eol       in Parse.LineEnd
         from mapRanges in MapRange.XMany()
-        select new SeedMap(fromName, toName, mapRanges);
+        select new AlmanacValueMap(fromName, toName, mapRanges);
 
     public static readonly Parser<Almanac> Almanac =
         from seeds in SeedIds
