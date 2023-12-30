@@ -1,7 +1,6 @@
 ﻿namespace AdventOfCode.Helpers;
 
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 /// <summary>A fixed size last-in-first-out collection (stack) of instances of <typeparamref name="T"/>. 
 /// Wraps a provided <see cref="Span{T}"/> providing stack-like access.</summary>
@@ -95,6 +94,22 @@ public ref struct StackSpan<T>(Span<T> span)
         array[index] = value;
         this.index = index;
         return true;
+    }
+
+
+    public void PushRange(IEnumerable<T> items) {
+        ArgumentNullException.ThrowIfNull(items);
+
+        using IEnumerator<T> itemEnumerator = items.GetEnumerator();
+        while (itemEnumerator.MoveNext()) Push(itemEnumerator.Current);
+    }
+
+    public void PushStack(in StackSpan<T> items) {
+        int newIndex = this.index - items.Count;
+        if (newIndex < 0) ThrowStackFull();
+
+        items.AsSpan().CopyTo(this.array[newIndex..index]);
+        this.index = newIndex;
     }
 
     /// <summary>Removes and returns the item on the top of the <see cref="StackSpan{T}"/>.</summary>

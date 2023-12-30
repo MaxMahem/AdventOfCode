@@ -14,45 +14,37 @@ public class Day05 : AdventBase
     }
 
     protected override object InternalPart1() => 
-        this.almanac!.SeedData.Select(seed => almanac.Maps.Aggregate(seed, (value, map) => map.MapValue(value))).Min();
+        this.almanac!.SeedRanges.SelectMany(seedRange => IEnumerableHelpers.Flatten(seedRange.Start, seedRange.Length))
+                     .Select(seed => almanac.Maps.Aggregate(seed, (value, map) => map.MapValue(value))).Min();
 
-    protected override object InternalPart2() {
-        List<Range> resultRanges = [];
-        foreach (var seedRange in this.almanac!.SeedRanges) {
-            Range[] mappedRange = [seedRange];
-            foreach (var map in this.almanac!.Maps) {
-                mappedRange = mappedRange.Select(range => map.MapRange(in range)).SelectMany(e => e).Merge().ToArray();
-            }
-            resultRanges.AddRange(mappedRange);
-        }
-        return resultRanges.Merge().First().Start;
-    }
+    protected override object InternalPart2() => this.almanac!.MappedSeedRanges.First().Start;
 }
 
 public class Almanac {
-    private readonly ImmutableArray<long> _seedData;
     public IEnumerable<Range> SeedRanges { get; }
-    public IEnumerable<long> SeedData => _seedData; 
     public IEnumerable<AlmanacValueMap> Maps { get; }
+    public IEnumerable<Range> MappedSeedRanges { get; }
     public Almanac(IEnumerable<long> seedData, IEnumerable<AlmanacValueMap> maps) {
         ArgumentNullException.ThrowIfNull(seedData);
         ArgumentNullException.ThrowIfNull(maps);
-        if (!seedData.Count().IsEven()) throw new ArgumentOutOfRangeException(nameof(seedData), "Elements must be even.");
 
-        this._seedData  = seedData.ToImmutableArray();
-        this.SeedRanges = PairSeedData(_seedData);
-        this.Maps       = maps.ToImmutableArray();
+        this.SeedRanges       = seedData.SelectPair((start, length) => new Range(start, start + length)).ToImmutableArray();
+        this.Maps             = maps.ToImmutableArray();
+        this.MappedSeedRanges = MapSeedRanges().ToImmutableArray();
     }
 
-    /// <summary>Pair up the seed data.</summary>
-    private static IEnumerable<Range> PairSeedData(ImmutableArray<long> seedData) {
-        var seedRanges = new Range[seedData.Length / 2];
-        for (int seedIndex = 0; seedIndex < seedData.Length - 1; seedIndex += 2) {
-            long start = seedData[seedIndex];
-            long end   = seedData[seedIndex + 1] + start;
-            seedRanges[seedIndex/2] = new Range(start, end);
+    public const int MAX_RESULT_RANGES = 100;
+
+    private IEnumerable<Range> MapSeedRanges() {
+        StackSpan<Range> resultRanges = stackalloc Range[MAX_RESULT_RANGES];
+        foreach (var seedRange in SeedRanges) {
+            Range[] mappedRange = [seedRange];
+            foreach (var map in Maps) {
+                mappedRange = mappedRange.Select(range => map.MapRange(in range)).SelectMany(e => e).Merge().ToArray();
+            }
+            resultRanges.PushRange(mappedRange);
         }
-        return seedRanges.ToImmutableArray();
+        return resultRanges.ToArray().Merge();
     }
 };
 
@@ -64,17 +56,13 @@ public class AlmanacValueMap(string fromName, string toName, IEnumerable<ValueMa
     IReadOnlyList<ValueMap> RangeMaps { get; } = rangeMaps?.OrderBy(map => map.Source).ToImmutableArray()
             ?? throw new ArgumentNullException(nameof(rangeMaps));
 
-    public long MapValue(long value) {
-        foreach (var range in RangeMaps) {
-            if (range.TryMapValue(value, out long mappedValue)) return mappedValue;
-        }
-        return value;
-    }
+    public long MapValue(long value) => 
+        RangeMaps.Select(range => (Try: range.TryMapValue(value, out long outValue), Out: outValue))
+                 .Where(t => t.Try).Select(t => t.Out).FirstOrDefault(value);
 
-    /// <summary>Maps a given range against these range maps this class contains. 
+    /// <summary>Maps a given range against the range maps this class contains. 
     /// Any portions that do not fall within the range are passed through unmapped.
     /// Splits and creates new ranges from the input as necessary to do so.</summary>
-    /// <param name="inRange"></param>
     /// <returns>A list of mapped ranges </returns>
     public IEnumerable<Range> MapRange(in Range inRange) {
         StackSpan<Range> inputRanges  = stackalloc Range[MAX_RANGE_COUNT];
@@ -93,8 +81,8 @@ public class AlmanacValueMap(string fromName, string toName, IEnumerable<ValueMa
             if (mappedSplit.UnmappedR is Range right)  inputRanges.Push(right);                    
             if (mappedSplit.Mapped    is Range inside) mappedRanges.Push(inside);
         }
-        // empty any remaining unmapped items to mapped set (should only be at most only two.)
-        while (inputRanges.TryPop(out Range finalRange)) mappedRanges.Push(finalRange);
+        // push any remaining unmapped input into the mapped set unmapped.
+        mappedRanges.PushStack(inputRanges);
         return mappedRanges.ToArray();
     }
 }
@@ -103,10 +91,12 @@ public class ValueMap(long destStart, long sourceStart, long rangeLength) {
     public Range Destination { get; } = new(destStart,   destStart   + rangeLength);
     public Range Source      { get; } = new(sourceStart, sourceStart + rangeLength);
 
+    private long mappedValueOffset => Destination.Start - Source.Start;
+
     public Range MapRange(in Range range) {
         if (!Source.Contains(range)) throw new ArgumentException("Must be entirely within Source.", nameof(range));
 
-        return new Range(MapValue(range.Start), MapValue(range.End));
+        return range + this.mappedValueOffset;
     }
 
     /// <summary>Maps a given range, splitting it if necessary to do so.</summary>
@@ -115,6 +105,9 @@ public class ValueMap(long destStart, long sourceStart, long rangeLength) {
         var split = range.Split(Source);
         return (split.Inside is Range inside ? MapRange(inside) : null, split.Left, split.Right);
     }
+
+    public long MapValue(long inValue) => Source.Contains(inValue) ? this.mappedValueOffset + inValue
+                                                                   : throw new ArgumentException("Value not in range", nameof(inValue));
 
     public bool TryMapValue(long inValue, out long outValue) {
         if (!Source.Contains(inValue)) {
@@ -125,8 +118,6 @@ public class ValueMap(long destStart, long sourceStart, long rangeLength) {
         outValue = MapValue(inValue);
         return true;
     }
-
-    private long MapValue(long inValue) => Destination.Start - Source.Start + inValue;
 };
 
 public class AlmanacParser : SpracheParser {

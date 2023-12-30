@@ -1,10 +1,9 @@
 ﻿namespace AdventOfCode.Helpers;
-using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
 
-public static class IEnumerableHelpers
-{
+public static class IEnumerableHelpers {
+    /// <summary>Flattens a given pair of elements into a new enumeration.</summary>
+    public static IEnumerable<T> Flatten<T>(T item1, T item2) { yield return item1; yield return item2; }
+
     /// <summary>Returns a sequence of <see cref="KeyValuePair{TKey,TValue}"/>
     /// where the key is the index of the value in the source sequence.</summary>
     /// <param name="startIndex">First index in the sequence, defaults to 0.</param>
@@ -43,6 +42,28 @@ public static class IEnumerableHelpers
         yield return source.Last(predicate);
     }
 
+    /// <summary>Projects an enumeration against its elements in pairs.</summary>
+    /// <exception cref="ArgumentException">If the count of elements is not even.</exception>
+    public static IEnumerable<TResult> SelectPair<T, TResult>(this IEnumerable<T> source, Func<T, T, TResult> selector) {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(selector);
+        if (source.TryGetNonEnumeratedCount(out var count) && !count.IsEven()) 
+            throw new ArgumentException("Count of source items must be even.", nameof(source));
+
+        return SelectPairEnumerate();
+        
+        IEnumerable<TResult> SelectPairEnumerate() {
+            using var sourceEnumerator = source.GetEnumerator();
+            while (sourceEnumerator.MoveNext()) {
+                T item1 = sourceEnumerator.Current;
+                if (!sourceEnumerator.MoveNext()) throw new ArgumentException("Count of source items must be even.", nameof(source));
+                T item2 = sourceEnumerator.Current;
+                yield return selector(item1, item2);
+            }
+        }
+    }
+
+    /// <summary>Sliding window enumeration.</summary>
     public static IEnumerable<TResult> Pairwise<TSource, TResult>(this IEnumerable<TSource> source, Func<TSource, TSource, TResult> resultSelector) {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(resultSelector);
@@ -50,15 +71,15 @@ public static class IEnumerableHelpers
         return PairwiseEnumerate(); 
         
         IEnumerable<TResult> PairwiseEnumerate() {
-            using var e = source.GetEnumerator();
+            using var sourceEnumerator = source.GetEnumerator();
 
-            if (!e.MoveNext())
+            if (!sourceEnumerator.MoveNext())
                 yield break;
 
-            var previous = e.Current;
-            while (e.MoveNext()) {
-                yield return resultSelector(previous, e.Current);
-                previous = e.Current;
+            var previous = sourceEnumerator.Current;
+            while (sourceEnumerator.MoveNext()) {
+                yield return resultSelector(previous, sourceEnumerator.Current);
+                previous = sourceEnumerator.Current;
             }
         }
     }

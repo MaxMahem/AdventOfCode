@@ -5,7 +5,7 @@
 /// <param name="End"></param>
 public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> where T : INumber<T>
 {
-    public T Length { get; } = End - Start;
+    public T Length => End - Start;
     public bool Contains(T value) => value >= Start && value < End;
     public bool Contains(in Range<T> other) => Start <= other.Start && other.End <= End;
     public bool Intersects(in Range<T> other) => Start < other.End && End > other.Start;
@@ -19,8 +19,8 @@ public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> w
     /// right, of, and inside <paramref name="other"/></returns>
     public (Range<T>? Left, Range<T>? Inside, Range<T>? Right) Split(in Range<T> other) {
 
-        if (other.Start >= End) return (this, null, null); // entirely to the left of other range. 
-        if (other.End < Start) return (null, null, this); // entirely to the right of other range.
+        if (other.Start >= End)   return (this, null, null); // entirely to the left of other range. 
+        if (other.End < Start)    return (null, null, this); // entirely to the right of other range.
         if (other.Contains(this)) return (null, this, null); // entirely within the other range.
 
         // intersecting cases.
@@ -52,11 +52,17 @@ public readonly record struct Range<T>(T Start, T End) : IComparable<Range<T>> w
         return true;
     }
 
-    public static bool operator <(Range<T> left, Range<T> right) => left.CompareTo(right) < 0;
-    public static bool operator >(Range<T> left, Range<T> right) => left.CompareTo(right) > 0;
+    public static bool operator <(Range<T> left,  Range<T> right) => left.CompareTo(right) <  0;
+    public static bool operator >(Range<T> left,  Range<T> right) => left.CompareTo(right) >  0;
 
     public static bool operator <=(Range<T> left, Range<T> right) => left.CompareTo(right) <= 0;
     public static bool operator >=(Range<T> left, Range<T> right) => left.CompareTo(right) >= 0;
+
+    // shift operators.
+    public static Range<T> operator +(Range<T> left, T right) => (left.Start + right, left.End + right);
+    public static Range<T> operator -(Range<T> left, T right) => (left.Start - right, left.End - right);
+    public static Range<T> operator +(T left, Range<T> right) => (left + right.Start, left + right.End);
+    public static Range<T> operator -(T left, Range<T> right) => (left - right.Start, left - right.End);
 }
 
 public static class RangeExtensions {
