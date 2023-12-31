@@ -1,18 +1,18 @@
 ﻿namespace AdventOfCode._2023;
 
-using AdventOfCode.Helpers;
-
 using Sprache;
+
+using AdventOfCode.Helpers;
 
 public class Day06 : AdventBase
 {
-    IEnumerable<RaceData>? _raceDataPart1;
-    RaceData _raceDataPart2;
+    IEnumerable<ToyBotRaceRecord>? _raceDataPart1;
+    ToyBotRaceRecord _raceDataPart2;
     protected override void InternalOnLoad() {
-        _raceDataPart1 = RaceDataParser.RaceData.Parse(Input.Text);
+        _raceDataPart1 = ToyBotRaceRecordParser.RaceData.Parse(Input.Text);
         var newTime = _raceDataPart1.Select(rd => rd.Time).Reverse().Concatinate();
         var newDist = _raceDataPart1.Select(rd => rd.Distance).Reverse().Concatinate();
-        _raceDataPart2 = new RaceData(newTime, newDist);
+        _raceDataPart2 = new ToyBotRaceRecord(newTime, newDist);
     }
 
     protected override object InternalPart1() => 
@@ -24,7 +24,7 @@ public class Day06 : AdventBase
     }
 }
 
-public readonly record struct RaceData(long Time, long Distance) {
+public readonly record struct ToyBotRaceRecord(long Time, long Distance) {
     /// <summary>Enumerates all winning race combinations for the given race data.</summary>
     public IEnumerable<(long hold, long distance)> GetWinningCombinations() {
         var (endHold, startHold) = this.MinimumWinningHolds;
@@ -47,7 +47,7 @@ public readonly record struct RaceData(long Time, long Distance) {
     }
 }
 
-public class RaceDataParser : SpracheParser {
+public class ToyBotRaceRecordParser : SpracheParser {
     public static readonly Parser<IEnumerable<int>> Times =
         from identifier in Parse.String("Time:").Token()
         from times      in IntParser.Token().XMany()
@@ -59,8 +59,8 @@ public class RaceDataParser : SpracheParser {
         from eol        in Parse.LineEnd.Optional()
         select distance;
 
-    public static readonly Parser<IEnumerable<RaceData>> RaceData =
+    public static readonly Parser<IEnumerable<ToyBotRaceRecord>> RaceData =
         from times in Times
         from distances in Distances
-        select times.Zip(distances).Select((data) => new RaceData(data.First, data.Second));
+        select times.Zip(distances).Select((data) => new ToyBotRaceRecord(data.First, data.Second));
 }

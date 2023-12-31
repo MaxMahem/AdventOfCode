@@ -17,20 +17,20 @@ public class Day08 : AdventBase {
 
     protected override object InternalPart2() =>
         _map!.Nodes.Where(kvp => kvp.Key.Check('A', 2)).Select(kvp => kvp.Value)
-                   .Select(node => _map.Navigate(node, (Node n) => n.Key.Check('Z', 2)))
+                   .Select(node => _map.Navigate(node, (GhostMapNode n) => n.Key.Check('Z', 2)))
                    .LCM();
 }
 
-public class GhostMap(Directions directions, IEnumerable<Node> nodes) {
-    public Directions Directions { get; } = directions;
+public class GhostMap(GhostMapDirections directions, IEnumerable<GhostMapNode> nodes) {
+    public GhostMapDirections Directions { get; } = directions;
 
-    public IReadOnlyDictionary<NodeKey, Node> Nodes { get; } = nodes.ToImmutableDictionary(node => node.Key);
+    public IReadOnlyDictionary<GhostMapNodeKey, GhostMapNode> Nodes { get; } = nodes.ToImmutableDictionary(node => node.Key);
 
     public int Navigate(string start, string end) => Navigate(Nodes[start], Nodes[end]);
-    public int Navigate(Node start, Node end) => Navigate(start, node => node == end);
-    public int Navigate(Node start, Func<Node, bool> endPredicate) {
+    public int Navigate(GhostMapNode start, GhostMapNode end) => Navigate(start, node => node == end);
+    public int Navigate(GhostMapNode start, Func<GhostMapNode, bool> endPredicate) {
         var loopingEnumerator = Directions.GetEnumerator().MakeLooping();
-        Node current = start;
+        GhostMapNode current = start;
 
         int steps = 0;
         do {
@@ -42,15 +42,15 @@ public class GhostMap(Directions directions, IEnumerable<Node> nodes) {
         return steps;
     }
 
-    private Node Step(Node node, bool direction) => direction ? Nodes[node.Left] : Nodes[node.Right];
+    private GhostMapNode Step(GhostMapNode node, bool direction) => direction ? Nodes[node.Left] : Nodes[node.Right];
 }
 
-public readonly struct Directions(string directions) : IEnumerable<bool> {
-    private readonly BitArray _directions = string.IsNullOrEmpty(directions) ? throw new ArgumentException("Cannot be empty", nameof(directions))
-                                                                             : directions.CreateBitArray(ParseDirection);
+public readonly struct GhostMapDirections(string directions) : IEnumerable<bool> {
+    private readonly BitArray directions = string.IsNullOrEmpty(directions) ? throw new ArgumentException("Cannot be empty", nameof(directions))
+                                                                            : directions.CreateBitArray(ParseDirection);
 
-    public IEnumerator<bool> GetEnumerator() => _directions.GetTypedEnumerator();
-    IEnumerator IEnumerable.GetEnumerator()  => _directions.GetTypedEnumerator();
+    public IEnumerator<bool> GetEnumerator() => directions.GetTypedEnumerator();
+    IEnumerator IEnumerable.GetEnumerator()  => directions.GetTypedEnumerator();
 
     private static bool ParseDirection(char direction) => direction switch {
         'L' => true,
@@ -59,12 +59,12 @@ public readonly struct Directions(string directions) : IEnumerable<bool> {
     };
 }
 
-public record struct Node(NodeKey Key, NodeKey Left, NodeKey Right);
+public record struct GhostMapNode(GhostMapNodeKey Key, GhostMapNodeKey Left, GhostMapNodeKey Right);
 
-public record struct NodeKey(int Key) {
-    public NodeKey(IEnumerable<char> text) : this(Encode(text)) { }
+public record struct GhostMapNodeKey(int Key) {
+    public GhostMapNodeKey(IEnumerable<char> text) : this(Encode(text)) { }
 
-    public static implicit operator NodeKey(string text) => new(text);
+    public static implicit operator GhostMapNodeKey(string text) => new(text);
 
     public static int Encode(IEnumerable<char> text) {
         int key = 0; int index = 0;
@@ -82,11 +82,11 @@ public record struct NodeKey(int Key) {
 }
 
 public class GhostMapParser : SpracheParser {
-    private static readonly Parser<NodeKey> MapKeyParser = Parse.LetterOrDigit.Repeat(3).Select(e => new NodeKey(e));
+    private static readonly Parser<GhostMapNodeKey> MapKeyParser = Parse.LetterOrDigit.Repeat(3).Select(e => new GhostMapNodeKey(e));
 
-    public static readonly Parser<Directions> Directions = Parse.Chars("LR").Until(Parse.LineEnd).Text().Select(s => new Directions(s));
+    public static readonly Parser<GhostMapDirections> Directions = Parse.Chars("LR").Until(Parse.LineEnd).Text().Select(s => new GhostMapDirections(s));
 
-    public static readonly Parser<Node> NodeParser =
+    public static readonly Parser<GhostMapNode> NodeParser =
         from key   in MapKeyParser.Token()
         from equal in Parse.Char('=').Token()
         from open  in Parse.Char('(')
@@ -95,7 +95,7 @@ public class GhostMapParser : SpracheParser {
         from right in MapKeyParser
         from close in Parse.Char(')')
         from eol   in Parse.LineEnd.Optional()
-        select new Node(key, left, right);
+        select new GhostMapNode(key, left, right);
 
     public static readonly Parser<GhostMap> MapParser =
         from directions in Directions

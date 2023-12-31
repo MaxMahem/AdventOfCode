@@ -84,6 +84,27 @@ public static class IEnumerableHelpers {
         }
     }
 
+    /// <summary>Performs a pairwise/sliding window enumeration except on the last iteration, 
+    /// the first element is paired again, closing the loop.</summary>
+    public static IEnumerable<(T First, T Second)> PairwiseLoop<T>(this IEnumerable<T> source) {
+        ArgumentNullException.ThrowIfNull(source);
+
+        using var sourceEnumerator = source.GetEnumerator();
+        if (!sourceEnumerator.MoveNext()) yield break;  // no elements
+
+        T first  = sourceEnumerator.Current, second;
+        T origin = first;
+
+        while (sourceEnumerator.MoveNext()) {
+            second = sourceEnumerator.Current;
+            yield return (first, second);
+            first = second;
+        }
+
+        // Close the loop by yielding the trailing item with the first elements
+        yield return (first, origin);
+    }
+
     /// <summary>Generates all possible combinations pairs of this Enumerable.</summary>
     /// <remarks>Note this method does not return the pairs in an ordered sequence.</remarks>
     /// <returns>An enumeration of tuples representing all possible combination pairs.</returns>

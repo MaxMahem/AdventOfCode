@@ -2,28 +2,22 @@
 
 public class Day07 : AdventBase
 {
-    IEnumerable<HandBid>? _handBids;
+    IEnumerable<HandAndBid>? handAndBids;
     
     protected override void InternalOnLoad() {
-        _handBids = CardParser.Parse(Input.Text).ToList();
+        this.handAndBids = CardParser.Parse(Input.Text).ToList();
     }
 
-    protected override object InternalPart1() {
-        var game = new CamelPokerGame();
+    protected override object InternalPart1() => EvaluateHandAndBids(new CamelPokerGame(null), this.handAndBids!);
 
-        return _handBids!.Select(hb => (Score: game.ScoreHand(hb.Hand), hb.Bid))
-                         .OrderBy(t => t.Score).Select((t, i) => (i + 1) * t.Bid).Sum();
-    }
+    protected override object InternalPart2() => EvaluateHandAndBids(new CamelPokerGame('J'), this.handAndBids!);
 
-    protected override object InternalPart2() {
-        var game = new CamelPokerGame('J');
-
-        return _handBids!.Select(hb => (Score: game.ScoreHand(hb.Hand), hb.Bid))
-                         .OrderBy(t => t.Score).Select((t, i) => (i + 1) * t.Bid).Sum();
-    }
+    private static int EvaluateHandAndBids(CamelPokerGame game, IEnumerable<HandAndBid> handAndBids) =>
+        handAndBids!.Select(hb => (Hand: game.CreateHand(hb.Hand), hb.Bid)).OrderBy(hb => hb.Hand)
+                    .Select((t, i) => (i + 1) * t.Bid).Sum();
 }
 
-public readonly record struct HandBid(string Hand, int Bid);
+public readonly record struct HandAndBid(string Hand, int Bid);
 
 public class CamelPokerGame(char? wildcard = null) {
     public char? Wildcard { get; } = wildcard;
@@ -148,7 +142,7 @@ public readonly record struct Card(char Symbol)
 }
 
 internal static class CardParser {
-    public static IEnumerable<HandBid> Parse(string text) {
+    public static IEnumerable<HandAndBid> Parse(string text) {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
 
         int index = 0; char digit;
@@ -163,7 +157,7 @@ internal static class CardParser {
                 bid = bid * 10 + digit - '0';
             }
             
-            yield return new HandBid(hand, bid);
+            yield return new HandAndBid(hand, bid);
 
             // Skip over EOL characters
             index = text.IndexOf('\n', index) + 1;

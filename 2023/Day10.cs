@@ -2,6 +2,8 @@
 
 using AdventOfCode.Helpers;
 using GridPoint = Helpers.GridPoint<int>;
+using Direction = Helpers.GridDirection<int>;
+using System.Drawing;
 
 public class Day10 : AdventBase {
     PipeSchematic? _pipeSchematic;
@@ -10,128 +12,92 @@ public class Day10 : AdventBase {
         _pipeSchematic = PipeSchematicParser.ParsePlan(Input.Text);
     }
 
-    protected override object InternalPart1() => _pipeSchematic!.Loop.Count() / 2;
-
-    protected override object InternalPart2() {
-        var loopPoints = _pipeSchematic!.Loop.Select(pipe => pipe.Location).ToImmutableArray();
-        var loopArea   = loopPoints.CalculateArea();
-        
-        // Picks Theorem.
-        var interiorPoints = loopArea - loopPoints.Length / 2 + 1;
-
-        return (int)interiorPoints;
-    }
-}
-
-public static class PointListHelper {
-    /// <summary>Calculates the area of a polygon using the Shoesting method. 
-    /// This assumes the list presents the points in order.</summary>
-    /// <param name="points">The list of points, must be in order.</param>
-    public static double CalculateArea(this IReadOnlyList<GridPoint> points) {
-        int pointCount = points.Count;
-        double area = 0;
-
-        for (int index = 0; index < pointCount; index++) {
-            int nextIndex = (index + 1) % pointCount;
-            area += (points[index].X * points[nextIndex].Y) - (points[nextIndex].X * points[index].Y);
-        }
-
-        area = 0.5 * Math.Abs(area);
-        return area;
-    }
+    protected override object InternalPart1() => _pipeSchematic!.Loop.Points.Count() / 2;
+    protected override object InternalPart2() => _pipeSchematic!.Loop.CountInteriorGridPoints();
 }
 
 public class PipeSchematic {
     public GridRectangle<int> Boundary { get; }
     public IReadOnlyDictionary<GridPoint, Pipe> PipeLocations { get; }
     public Pipe StartPipe { get; }
-    public IEnumerable<Pipe> Loop => _loop.Value;
+    public GridPolygon<Pipe> Loop => loop.Value;
 
-    public PipeSchematic(int width, int height, IEnumerable<Pipe> pipes, Pipe startPipe) {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+    public PipeSchematic(GridRectangle<int> boundary, IEnumerable<Pipe> pipes, Pipe startPipe) {
         ArgumentNullException.ThrowIfNull(pipes);
         ArgumentNullException.ThrowIfNull(startPipe);
 
-        Boundary      = new(width, height, 0, 0);
+        Boundary      = boundary;
         PipeLocations = pipes.ToImmutableDictionary(pipe => pipe.Location);
         StartPipe     = startPipe;
-
-        _loop = new(() => FindLoop(startPipe));
+        this.loop     = new(() => FindLoop(startPipe));
     }
 
-    private IEnumerable<Pipe> FindLoop(Pipe startingPipe) {
-        GridPoint lastLocation    = startingPipe.Location;
-        GridPoint currentLocation = startingPipe.Connected.PointA;
+    private GridPolygon<Pipe> FindLoop(Pipe startingPipe) {
+        (Pipe currentPipe, Pipe lastPipe) = (this.PipeLocations[startingPipe.Connections.PointA], startingPipe);
         List<Pipe> loopingPipes = [startingPipe];
 
         do {
-            loopingPipes.Add(this.PipeLocations[currentLocation]);
-            GridPoint nextLocation = Navigate(currentLocation, lastLocation);
-            (currentLocation, lastLocation) = (nextLocation, currentLocation);
-        } while (currentLocation != startingPipe.Location);
+            loopingPipes.Add(currentPipe);
+            (currentPipe, lastPipe) = (this.PipeLocations[currentPipe.GetCorresponding(lastPipe.Location)], currentPipe);
+        } while (currentPipe != startingPipe);
 
-        return loopingPipes.ToImmutableArray();
+        return new GridPolygon<Pipe>(loopingPipes);
     }
 
-    private GridPoint Navigate(GridPoint from, GridPoint last) => 
-        this.PipeLocations[from].Connected.GetCorresponding(last);
-
-    private readonly Lazy<IEnumerable<Pipe>> _loop;
+    private readonly Lazy<GridPolygon<Pipe>> loop;
 }
 
-public readonly record struct ConnectedPoints(GridPoint PointA, GridPoint PointB) {
-    public ConnectedPoints(int xa, int ya, int xb, int yb) : this((xa, ya), (xb, yb)) { }
+public readonly record struct Pipe(GridPoint Location, Pipe.PipeType Type) : IGridSymbol, IGridPoint<int> {
+    public Pipe(GridPoint location, char symbol) : this(location, ParseSymbol(symbol)) { }
 
-    public GridPoint GetCorresponding(GridPoint point) {
-        if (point == PointA) return PointB;
-        if (point == PointB) return PointA;
-        throw new ArgumentException("No corresponding point.", nameof(point));
-    }
-    public bool Contains(GridPoint point) => point == PointA || point == PointB;
-
-    public static ConnectedPoints GetConnected(GridPoint point, Pipe.PipeType type) => type switch {
-        Pipe.PipeType.NS => new(point.X + 0, point.Y - 1, point.X + 0, point.Y + 1),
-        Pipe.PipeType.EW => new(point.X + 1, point.Y + 0, point.X - 1, point.Y + 0),
-        Pipe.PipeType.NE => new(point.X + 0, point.Y - 1, point.X + 1, point.Y + 0),
-        Pipe.PipeType.NW => new(point.X + 0, point.Y - 1, point.X - 1, point.Y + 0),
-        Pipe.PipeType.SW => new(point.X + 0, point.Y + 1, point.X - 1, point.Y + 0),
-        Pipe.PipeType.SE => new(point.X + 0, point.Y + 1, point.X + 1, point.Y + 0),
-        _ => throw new ArgumentException("Invalid pipe type.", nameof(type))
+    public char Symbol => ToBoxASCII(Type);
+    public int X => this.Location.X;
+    public int Y => this.Location.Y;
+    public (GridPoint PointA, GridPoint PointB) Connections { get; } = Type switch {
+        PipeType.NS => (Location + Direction.North, Location + Direction.South),
+        PipeType.EW => (Location + Direction.East,  Location + Direction.West),
+        PipeType.NE => (Location + Direction.North, Location + Direction.East),
+        PipeType.NW => (Location + Direction.North, Location + Direction.West),
+        PipeType.SW => (Location + Direction.South, Location + Direction.West),
+        PipeType.SE => (Location + Direction.South, Location + Direction.East),
+        _ => throw new ArgumentException("Invalid pipe type.", nameof(Type))
     };
 
-    public Pipe.PipeType GetPipeType(GridPoint connectedPoint) {
-        (int X, int Y) pointADifference = (connectedPoint.X - PointA.X, connectedPoint.Y - PointA.Y);
-        (int X, int Y) pointBDifference = (connectedPoint.X - PointB.X, connectedPoint.Y - PointB.Y);
-        return (pointADifference, pointBDifference) switch {
-            ((+0, +1), (+0, -1)) => Pipe.PipeType.NS,
-            ((-1, +0), (+1, +0)) => Pipe.PipeType.EW,
-            ((+0, +1), (-1, +0)) => Pipe.PipeType.NE,
-            ((+0, +1), (+1, +0)) => Pipe.PipeType.NW,
-            ((+0, -1), (+1, +0)) => Pipe.PipeType.SW,
-            ((-1, +0), (+0, -1)) => Pipe.PipeType.SE,
-            _ => throw new InvalidOperationException("Invalid pipe connection.")
-        };
-    }
-};
-
-public readonly record struct Pipe(GridPoint Location, Pipe.PipeType Type, ConnectedPoints Connected) : IGridSymbol {
-    public char Symbol => ToBoxASCII(Type);
-    public Pipe(GridPoint location, char symbol) 
-        : this(location, ParseSymbol(symbol), ConnectedPoints.GetConnected(location, ParseSymbol(symbol))) { }
+    /// <summary>Checks to see if a given point is connected to this pipe.</summary>
+    public bool IsConnected(GridPoint point) => point == Connections.PointA || point == Connections.PointB;
 
     /// <summary>Special method for creating the start pipe, requiring all the other pipes to be defined.</summary>
-    public static Pipe? CreateStartPipe(GridPoint location, IEnumerable<Pipe> pipes) {
-        ConnectedPoints? connections = GetConnected(pipes, location);
-        if (connections is null) return null;
+    public static Pipe CreateStartPipe(GridPoint location, IEnumerable<Pipe> pipes) {
+        // parse all the pipes to find the ones that connect to this point.
+        var connectedPoints = pipes.Where(pipe => pipe.IsConnected(location)).Select(pipe => pipe.Location).ToArray();
+        if (connectedPoints.Length != 2) throw new ArgumentException("Start pipe must have exactly two connections");
 
-        var pipeType = connections.Value.GetPipeType(location);
-        return new(location, pipeType, connections.Value);
+        var pipeType = GetPipeType(location, connectedPoints[0], connectedPoints[1]);
+        return new(location, pipeType);
+    }
+
+    /// <summary>Determines the pipe type by comparing its connections.</summary>
+    public static PipeType GetPipeType(GridPoint centerPoint, GridPoint pointA, GridPoint pointB) {
+        (int X, int Y) pointADifference = (centerPoint.X - pointA.X, centerPoint.Y - pointA.Y);
+        (int X, int Y) pointBDifference = (centerPoint.X - pointB.X, centerPoint.Y - pointB.Y);
+        return (pointADifference, pointBDifference) switch {
+            ((+0, +1), (+0, -1)) => PipeType.NS,
+            ((-1, +0), (+1, +0)) => PipeType.EW,
+            ((+0, +1), (-1, +0)) => PipeType.NE,
+            ((+0, +1), (+1, +0)) => PipeType.NW,
+            ((+0, -1), (+1, +0)) => PipeType.SW,
+            ((-1, +0), (+0, -1)) => PipeType.SE,
+            _ => throw new InvalidOperationException("Invalid pipe connection.")
+        };
     }
 
     public enum PipeType { NS, EW, NE, NW, SW, SE }
 
-    public GridPoint Navigate(GridPoint from) => this.Connected.GetCorresponding(from);
+    public GridPoint GetCorresponding(GridPoint from) {
+        if (from == Connections.PointA) return Connections.PointB;
+        if (from == Connections.PointB) return Connections.PointA;
+        throw new ArgumentException("No corresponding point.", nameof(from));
+    }
 
     public static PipeType ParseSymbol(char symbol) => symbol switch {
         '|' => PipeType.NS,
@@ -142,15 +108,6 @@ public readonly record struct Pipe(GridPoint Location, Pipe.PipeType Type, Conne
         'F' => PipeType.SE,
         _ => throw new ArgumentException("Invalid pipe symbol.", nameof(symbol)),
     };
-
-    /// <summary>Parses a list of pipes to find connections to a given point.</summary>
-    /// <returns>The connected points, or null if no connections exists.</returns>
-    public static ConnectedPoints? GetConnected(IEnumerable<Pipe> pipes, GridPoint point) {
-        var connectedPoints = pipes.Where(pipe => pipe.Connected.Contains(point)).Select(pipe => pipe.Location).ToArray();
-        if (connectedPoints.Length != 2) return null;
-
-        return new(connectedPoints[0], connectedPoints[1]);
-    }
 
     public override string ToString() => this.Symbol.ToString();
 
@@ -202,10 +159,10 @@ public static class PipeSchematicParser {
         }
 
         // build the starting pipe given the information about all the other pipes.
-        Pipe startPipe = Pipe.CreateStartPipe(startPoint, pipes) ?? throw new ArgumentException("Invalid start location.");
+        Pipe startPipe = Pipe.CreateStartPipe(startPoint, pipes);
         pipes.Add(startPipe);
 
         int width = text.IndexOf('\n');
-        return new PipeSchematic(width, y, pipes, startPipe);
+        return new PipeSchematic((width, y), pipes, startPipe);
     }
 }
